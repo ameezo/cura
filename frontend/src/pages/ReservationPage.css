@@ -1,0 +1,73 @@
+.reservation-hero { background: linear-gradient(160deg, var(--color-surface-soft), var(--color-bg)); text-align: center; }
+.reservation-hero h1 { font-size: clamp(2rem, 4vw, 2.8rem); }
+
+.steps-indicator {
+  display: flex; justify-content: center; gap: var(--space-12); margin-bottom: var(--space-8);
+}
+.step-dot { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); }
+.step-dot-circle {
+  width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; border: 2px solid var(--color-border); font-weight: var(--weight-semibold);
+  font-size: var(--text-sm); color: var(--color-text-muted); transition: all var(--transition-base);
+}
+.step-active .step-dot-circle {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  color: white; border-color: transparent;
+}
+.step-done .step-dot-circle { background: var(--color-success); color: white; border-color: transparent; }
+.step-dot span { font-size: var(--text-sm); color: var(--color-text-muted); font-weight: var(--weight-medium); }
+.step-active span { color: var(--color-primary); }
+
+.reservation-card { max-width: 680px; margin: 0 auto; padding: var(--space-8) !important; }
+
+.form-step { display: flex; flex-direction: column; gap: var(--space-5); }
+.form-step h3 { font-size: var(--text-xl); margin-bottom: var(--space-2); }
+
+.doctor-grid { display: flex; flex-direction: column; gap: var(--space-3); margin-top: var(--space-2); }
+.doctor-option {
+  display: flex; align-items: center; gap: var(--space-4); padding: var(--space-4);
+  border: 1.5px solid var(--color-border-light); border-radius: var(--radius-md);
+  cursor: pointer; transition: all var(--transition-fast);
+}
+.doctor-option:hover { border-color: var(--color-primary); background: var(--color-primary-lighter); }
+.doctor-selected { border-color: var(--color-primary); background: var(--color-primary-lighter); }
+.doctor-option-avatar {
+  width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-circle); background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  color: white;
+}
+.doctor-option-info { display: flex; flex-direction: column; flex: 1; }
+.doctor-option-info strong { font-size: var(--text-sm); }
+.doctor-option-info span { font-size: var(--text-xs); color: var(--color-text-muted); }
+.doctor-option-meta { color: var(--color-text-light); }
+.doctor-check { color: var(--color-primary); font-size: 24px; }
+
+.time-slots { display: flex; flex-direction: column; gap: var(--space-3); }
+.time-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-2); }
+.time-slot {
+  padding: var(--space-3); border: 1.5px solid var(--color-border); border-radius: var(--radius-sm);
+  font-size: var(--text-sm); font-weight: var(--weight-medium); color: var(--color-text-secondary);
+  transition: all var(--transition-fast); text-align: center;
+}
+.time-slot:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.time-active { background: var(--color-primary); color: white; border-color: var(--color-primary); }
+
+.form-actions { display: flex; justify-content: space-between; gap: var(--space-4); margin-top: var(--space-4); }
+
+.reservation-success { text-align: center; max-width: 500px; margin: 0 auto; }
+.success-icon { margin-bottom: var(--space-4); }
+.success-icon .material-symbols-rounded { font-size: 64px; color: var(--color-success); }
+.reservation-success h2 { margin-bottom: var(--space-3); }
+.reservation-success > p { color: var(--color-text-muted); margin-bottom: var(--space-6); }
+.reservation-summary-card { margin-bottom: var(--space-6); text-align: left; }
+.summary-row {
+  display: flex; justify-content: space-between; padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-border-light); font-size: var(--text-sm);
+}
+.summary-row span { color: var(--color-text-muted); }
+.summary-row:last-child { border-bottom: none; }
+
+@media (max-width: 640px) {
+  .time-grid { grid-template-columns: repeat(3, 1fr); }
+  .steps-indicator { gap: var(--space-6); }
+}

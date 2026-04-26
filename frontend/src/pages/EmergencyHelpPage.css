@@ -1,0 +1,49 @@
+.emergency-hero { background: linear-gradient(160deg, #FDE8EB 0%, var(--color-bg) 60%); text-align: center; }
+.emergency-hero-content { max-width: 520px; margin: 0 auto; }
+.emergency-pulse {
+  width: 80px; height: 80px; display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; background: var(--color-danger-bg); margin: 0 auto var(--space-5);
+  animation: heartbeat 2s ease-in-out infinite;
+}
+.emergency-pulse .material-symbols-rounded { font-size: 36px; color: var(--color-danger); }
+.emergency-hero h1 { margin-bottom: var(--space-3); }
+.emergency-hero p { color: var(--color-text-muted); margin: 0; }
+
+.emergency-actions-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-4); }
+.emergency-action-card {
+  display: flex; flex-direction: column; align-items: center; gap: var(--space-3);
+  padding: var(--space-6); background: var(--color-surface); border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-lg); text-align: center; transition: all var(--transition-base); cursor: pointer;
+}
+.emergency-action-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-card-hover); }
+.emergency-action-icon {
+  width: 52px; height: 52px; display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-lg);
+}
+.emergency-action-icon .material-symbols-rounded { font-size: 26px; }
+.emergency-action-card strong { font-size: var(--text-sm); }
+.emergency-action-card span { font-size: var(--text-xs); color: var(--color-text-muted); }
+
+.emergency-contacts-list { display: flex; flex-direction: column; gap: var(--space-3); }
+.emergency-contact-item { padding: var(--space-4) var(--space-5) !important; }
+.emergency-contact-row { display: flex; align-items: center; gap: var(--space-4); }
+.emergency-contact-icon {
+  width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-sm); flex-shrink: 0;
+}
+.emergency-contact-icon .material-symbols-rounded { font-size: 22px; }
+.emergency-contact-info { flex: 1; display: flex; flex-direction: column; }
+.emergency-contact-info strong { font-size: var(--text-sm); }
+.emergency-contact-info span { font-size: var(--text-xs); color: var(--color-text-muted); }
+
+.safety-tips-card h3 { margin-bottom: var(--space-5); }
+.safety-tips-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-4); }
+.safety-tip { display: flex; align-items: flex-start; gap: var(--space-3); }
+.safety-tip .material-symbols-rounded { color: var(--color-success); font-size: 20px; margin-top: 2px; }
+.safety-tip p { font-size: var(--text-sm); color: var(--color-text-secondary); margin: 0; }
+
+@media (max-width: 768px) {
+  .emergency-actions-grid { grid-template-columns: repeat(2, 1fr); }
+  .safety-tips-grid { grid-template-columns: 1fr; }
+  .emergency-contact-row { flex-wrap: wrap; }
+}

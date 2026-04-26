@@ -1,0 +1,129 @@
+/* ============================================
+   CURA — Design System Variables
+   Brand: Calm, modern healthcare
+   ============================================ */
+
+:root {
+  /* ---- Brand Colors ---- */
+  --color-bg: #F9FFFE;
+  --color-surface: #FFFFFF;
+  --color-surface-soft: #F3F7FF;
+  --color-surface-hover: #EDF2FF;
+
+  --color-primary: #69AAFA;
+  --color-primary-hover: #4F97F3;
+  --color-primary-active: #3A86E8;
+  --color-primary-light: rgba(105, 170, 250, 0.12);
+  --color-primary-lighter: rgba(105, 170, 250, 0.06);
+
+  --color-secondary: #93A3FA;
+  --color-secondary-hover: #7B8EF8;
+  --color-secondary-soft: #E9EDFF;
+  --color-secondary-light: rgba(147, 163, 250, 0.12);
+
+  /* ---- Text ---- */
+  --color-text: #2B3551;
+  --color-text-secondary: #4A5568;
+  --color-text-muted: #63708A;
+  --color-text-light: #8D99AE;
+  --color-text-inverse: #FFFFFF;
+
+  /* ---- Borders ---- */
+  --color-border: #DCE6F5;
+  --color-border-light: #EDF2FA;
+  --color-border-focus: var(--color-primary);
+
+  /* ---- Semantic ---- */
+  --color-success: #4CAF88;
+  --color-success-bg: #E8F8F0;
+  --color-success-border: #A8E0C4;
+  --color-warning: #F4B860;
+  --color-warning-bg: #FFF8E8;
+  --color-warning-border: #F4D8A0;
+  --color-danger: #E56B7A;
+  --color-danger-bg: #FDE8EB;
+  --color-danger-border: #F0B0B8;
+  --color-info: var(--color-primary);
+  --color-info-bg: var(--color-primary-light);
+
+  /* ---- Shadows ---- */
+  --shadow-xs: 0 1px 2px rgba(43, 53, 81, 0.04);
+  --shadow-sm: 0 2px 8px rgba(43, 53, 81, 0.06);
+  --shadow-md: 0 4px 16px rgba(43, 53, 81, 0.08);
+  --shadow-lg: 0 12px 30px rgba(105, 170, 250, 0.12);
+  --shadow-xl: 0 20px 50px rgba(105, 170, 250, 0.16);
+  --shadow-card: 0 2px 12px rgba(105, 170, 250, 0.08);
+  --shadow-card-hover: 0 8px 30px rgba(105, 170, 250, 0.15);
+  --shadow-button: 0 4px 14px rgba(105, 170, 250, 0.25);
+  --shadow-nav: 0 1px 8px rgba(43, 53, 81, 0.06);
+
+  /* ---- Radii ---- */
+  --radius-xs: 8px;
+  --radius-sm: 12px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-pill: 999px;
+  --radius-circle: 50%;
+
+  /* ---- Spacing ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+
+  /* ---- Typography ---- */
+  --font-heading: 'Poppins', sans-serif;
+  --font-body: 'Inter', sans-serif;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+  --text-5xl: 3rem;
+
+  --leading-tight: 1.2;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.65;
+
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* ---- Transitions ---- */
+  --transition-fast: 150ms ease;
+  --transition-base: 250ms ease;
+  --transition-slow: 400ms ease;
+  --transition-spring: 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ---- Z-Index ---- */
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-nav: 300;
+  --z-overlay: 400;
+  --z-modal: 500;
+  --z-toast: 600;
+
+  /* ---- Layout ---- */
+  --nav-height: 72px;
+  --sidebar-width: 260px;
+  --sidebar-collapsed: 72px;
+  --container-sm: 640px;
+  --container-md: 768px;
+  --container-lg: 1024px;
+  --container-xl: 1200px;
+  --container-2xl: 1400px;
+}

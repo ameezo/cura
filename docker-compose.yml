@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app           # Sync code changes → container
+      - /app/node_modules         # Prevent host node_modules from overwriting container's
+    environment:
+      - CHOKIDAR_USEPOLLING=true  # Ensures file watching works in Docker
+
+
+  backend:
+    build: ./backend
+    ports:
+      - "5001:5000"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=SuperSecretPass
+      - POSTGRES_DB=medical_app
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - SECRET_KEY=development-secret-key-123
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - db
+
+  db:
+    image: postgres:16
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=SuperSecretPass
+      - POSTGRES_DB=medical_app
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

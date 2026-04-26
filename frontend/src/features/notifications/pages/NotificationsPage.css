@@ -1,0 +1,14 @@
+.notif-list { display: flex; flex-direction: column; gap: var(--space-3); }
+.notif-card { padding: var(--space-4) var(--space-5) !important; cursor: pointer; }
+.notif-unread { background: var(--color-primary-lighter) !important; border-color: rgba(105, 170, 250, 0.15) !important; }
+.notif-row { display: flex; align-items: flex-start; gap: var(--space-4); }
+.notif-icon { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); flex-shrink: 0; }
+.notif-icon .material-symbols-rounded { font-size: 20px; }
+.notif-content { flex: 1; }
+.notif-header { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-1); }
+.notif-header strong { font-size: var(--text-sm); }
+.notif-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--color-primary); flex-shrink: 0; }
+.notif-content p { font-size: var(--text-sm); color: var(--color-text-muted); margin: 0 0 var(--space-1); }
+.notif-time { font-size: var(--text-xs); color: var(--color-text-light); }
+
+@media (max-width: 640px) { .notif-row { flex-wrap: wrap; } }

@@ -1,0 +1,19 @@
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-16) var(--space-8);
+  text-align: center;
+  animation: fadeInUp 0.5s ease;
+}
+.error-state-icon {
+  width: 80px; height: 80px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-circle);
+  background: var(--color-danger-bg);
+  margin-bottom: var(--space-6);
+}
+.error-state-icon .material-symbols-rounded { font-size: 36px; color: var(--color-danger); }
+.error-state-title { font-size: var(--text-xl); color: var(--color-text); margin-bottom: var(--space-2); }
+.error-state-message { color: var(--color-text-muted); max-width: 360px; margin: 0 0 var(--space-6); }
