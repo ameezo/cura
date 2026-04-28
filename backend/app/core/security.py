@@ -2,7 +2,7 @@ import jwt
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
 from functools import wraps
-from flask import request, jsonify
+from flask import request, jsonify, g
 from app.core.config import settings
 
 def create_access_token(subject: str, role: str, is_verified: bool = False) -> str:
@@ -39,6 +39,7 @@ def require_role(roles: List[str]):
             if user_role == "doctor" and not token_data.get("ver", False):
                 return jsonify({"msg": "Doctor account pending admin verification"}), 403
                 
+            g.current_user = token_data
             return f(*args, **kwargs)
         return decorated_function
     return decorator

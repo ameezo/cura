@@ -20,6 +20,10 @@ def create_app():
     from app.api.v1.api import api_bp
     app.register_blueprint(api_bp, url_prefix=settings.API_V1_STR)
     
+    # Initialize temporal background chron-workers
+    from app.tasks.scheduler import start_scheduler
+    start_scheduler(app)
+    
     
     # fot the route of the app 
     @app.route("/health", methods=["GET"])

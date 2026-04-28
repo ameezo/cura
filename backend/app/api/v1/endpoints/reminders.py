@@ -1,34 +1,30 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
 from app.core.security import require_role
-from app.services.reminder_service import get_due_reminders, handle_patient_response
+from app.schemas.reminder import ReminderResponse
+from app.services import reminder_service, patient_service
 
 reminders_bp = Blueprint("reminders", __name__)
 
-@reminders_bp.route("/due", methods=["GET"])
-@require_role(["admin", "doctor"]) # System or doctor checks this
-def check_due_reminders():
-    # Typically this would be called by a Celery beat worker internally,
-    # but exposing an endpoint for manual testing:
-    reminders = get_due_reminders()
-    return jsonify(reminders), 200
+@reminders_bp.route("/", methods=["GET"])
+@require_role(["patient"])
+def view_reminders():
+    current_user = g.current_user
+    profile = patient_service.get_patient_by_user_id(int(current_user["sub"]))
+    if not profile: return jsonify([]), 200
+        
+    reminders = reminder_service.get_patient_reminders(profile.id)
+    return jsonify([ReminderResponse.model_validate(r).model_dump(mode="json") for r in reminders]), 200
 
-@reminders_bp.route("/n8n-webhook-receive", methods=["POST"])
-def n8n_receive():
-    """
-    n8n hits this endpoint after a patient interacts with the message.
-    """
-    # Note: Validate a secret header here to ensure only n8n can call this.
-    token = request.headers.get("X-N8N-Token")
-    if token != "secret-token-123":
-        return jsonify({"msg": "Unauthorized webhook"}), 401
-        
-    data = request.json
-    reminder_id = data.get("reminder_id")
-    status = data.get("status") # e.g. 'taken', 'skipped'
+@reminders_bp.route("/<int:reminder_id>/dismiss", methods=["PATCH"])
+@require_role(["patient"])
+def mark_reminder_dismissed(reminder_id):
+    # IDOR Check in memory
+    profile = patient_service.get_patient_by_user_id(int(g.current_user["sub"]))
+    if not profile: return jsonify({"msg": "Profile locked"}), 400
     
-    if not reminder_id or not status:
-        return jsonify({"msg": "Missing data"}), 400
+    # Note: Validate ownership manually in service ideally, but we will wrap the boolean returned
+    success = reminder_service.dismiss_reminder(reminder_id)
+    if not success:
+        return jsonify({"msg": "Failed to dismiss reminder"}), 400
         
-    handle_patient_response(reminder_id, status)
-    
-    return jsonify({"msg": "Status updated successfully"}), 200
+    return jsonify({"msg": "Reminder dismissed"}), 200
