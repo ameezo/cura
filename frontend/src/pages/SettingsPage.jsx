@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import PageHeader from '../components/ui/PageHeader';
 import Card from '../components/ui/Card';
 import Input from '../components/ui/Input';
@@ -6,41 +6,165 @@ import Button from '../components/ui/Button';
 import Alert from '../components/ui/Alert';
 import Avatar from '../components/ui/Avatar';
 import { useAuth } from '../hooks/useAuth';
+import { getPatientById, updatePatient } from '../api/patientsApi';
+import { getDoctorById, updateDoctor } from '../api/doctorsApi';
 import './SettingsPage.css';
 
+/**
+ * SettingsPage — loads real profile data from the API,
+ * allows editing, and saves back via PUT endpoints.
+ *
+ * For patients:  GET /patients/<id> → PUT /patients/<id>
+ * For doctors:   GET /doctors/<id>  → PUT /doctors/<id>
+ *
+ * The user.id from auth context is the User table id.
+ * Patient/Doctor profile IDs may differ — we use the user.id
+ * to query and the backend resolves ownership.
+ */
 export default function SettingsPage() {
   const { user } = useAuth();
   const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
 
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+  // Patient form state
+  const [patientForm, setPatientForm] = useState({
+    first_name: '',
+    last_name: '',
+    date_of_birth: '',
+    gender: '',
+    phone_number: '',
+    medical_history: '',
+  });
+
+  // Doctor form state
+  const [doctorForm, setDoctorForm] = useState({
+    full_name: '',
+    specialization: '',
+    clinic_location: '',
+    contact_phone: '',
+  });
+
+  const [profileId, setProfileId] = useState(null);
+  const isDoctor = user?.role === 'doctor';
+
+  useEffect(() => {
+    async function loadProfile() {
+      setLoading(true);
+      setError(null);
+      try {
+        if (isDoctor) {
+          const data = await getDoctorById(user?.profile_id || user?.id);
+          setProfileId(data.id);
+          setDoctorForm({
+            full_name: data.full_name || '',
+            specialization: data.specialization || '',
+            clinic_location: data.clinic_location || '',
+            contact_phone: data.contact_phone || '',
+          });
+        } else {
+          const data = await getPatientById(user?.profile_id || user?.id);
+          setProfileId(data.id);
+          setPatientForm({
+            first_name: data.first_name || '',
+            last_name: data.last_name || '',
+            date_of_birth: data.date_of_birth || '',
+            gender: data.gender || '',
+            phone_number: data.phone_number || '',
+            medical_history: data.medical_history || '',
+          });
+        }
+      } catch (err) {
+        setError('Could not load profile. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    if (user?.id) {
+      loadProfile();
+    }
+  }, [user?.id, isDoctor]);
+
+  const handlePatientChange = (e) =>
+    setPatientForm({ ...patientForm, [e.target.name]: e.target.value });
+
+  const handleDoctorChange = (e) =>
+    setDoctorForm({ ...doctorForm, [e.target.name]: e.target.value });
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      if (isDoctor) {
+        await updateDoctor(profileId || user?.id, doctorForm);
+      } else {
+        // Remove empty optional fields
+        const payload = { ...patientForm };
+        Object.keys(payload).forEach((key) => {
+          if (payload[key] === '') delete payload[key];
+        });
+        payload.first_name = patientForm.first_name;
+        payload.last_name = patientForm.last_name;
+        await updatePatient(profileId || user?.id, payload);
+      }
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      setError(err.message || 'Failed to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
+
+  const displayName = isDoctor
+    ? (doctorForm.full_name || 'Doctor')
+    : (`${patientForm.first_name} ${patientForm.last_name}`.trim() || 'User');
 
   return (
     <div className="settings-page">
       <PageHeader title="Settings" subtitle="Manage your account preferences" />
 
       {saved && <Alert variant="success" title="Saved!" onClose={() => setSaved(false)}>Your settings have been updated successfully.</Alert>}
+      {error && <Alert variant="error" title="Error" onClose={() => setError(null)}>{error}</Alert>}
 
       <div className="settings-grid">
         {/* Profile */}
         <Card className="settings-card">
           <h3 className="settings-section-title">Profile Information</h3>
           <div className="settings-avatar-row">
-            <Avatar name={user?.name || 'User'} size="xl" />
+            <Avatar name={displayName} size="xl" />
             <div>
-              <Button variant="outline" size="sm">Change Photo</Button>
-              <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: '4px' }}>JPG or PNG, max 2MB</p>
+              <p style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-semibold)' }}>{displayName}</p>
+              <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+                {user?.email} · {user?.role}
+              </p>
             </div>
           </div>
-          <div className="settings-fields">
-            <Input label="Full Name" defaultValue={user?.name || ''} icon="person" />
-            <Input label="Email" type="email" defaultValue={user?.email || ''} icon="mail" />
-            <Input label="Phone" type="tel" defaultValue={user?.phone || ''} icon="phone" />
-            <Input label="Date of Birth" type="date" defaultValue={user?.dateOfBirth || ''} icon="cake" />
-          </div>
-          <Button variant="primary" icon="save" onClick={handleSave}>Save Changes</Button>
+
+          {loading ? (
+            <div style={{ padding: 'var(--space-8) 0', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+              Loading profile...
+            </div>
+          ) : isDoctor ? (
+            <div className="settings-fields">
+              <Input label="Full Name" name="full_name" value={doctorForm.full_name} onChange={handleDoctorChange} icon="badge" />
+              <Input label="Specialization" name="specialization" value={doctorForm.specialization} onChange={handleDoctorChange} icon="medical_services" />
+              <Input label="Clinic Location" name="clinic_location" value={doctorForm.clinic_location} onChange={handleDoctorChange} icon="location_on" />
+              <Input label="Contact Phone" name="contact_phone" type="tel" value={doctorForm.contact_phone} onChange={handleDoctorChange} icon="phone" />
+            </div>
+          ) : (
+            <div className="settings-fields">
+              <Input label="First Name" name="first_name" value={patientForm.first_name} onChange={handlePatientChange} icon="person" />
+              <Input label="Last Name" name="last_name" value={patientForm.last_name} onChange={handlePatientChange} icon="person" />
+              <Input label="Email" type="email" value={user?.email || ''} icon="mail" disabled />
+              <Input label="Phone" name="phone_number" type="tel" value={patientForm.phone_number} onChange={handlePatientChange} icon="phone" />
+              <Input label="Date of Birth" name="date_of_birth" type="date" value={patientForm.date_of_birth} onChange={handlePatientChange} icon="cake" />
+            </div>
+          )}
+
+          <Button variant="primary" icon="save" onClick={handleSave} loading={saving}>Save Changes</Button>
         </Card>
 
         {/* Preferences */}
@@ -86,7 +210,7 @@ export default function SettingsPage() {
             <Input label="New Password" type="password" icon="lock" placeholder="Enter new password" />
             <Input label="Confirm New Password" type="password" icon="lock" placeholder="Confirm new password" />
           </div>
-          <Button variant="outline" icon="key" onClick={handleSave}>Update Password</Button>
+          <Button variant="outline" icon="key">Update Password</Button>
         </Card>
 
         {/* Danger Zone */}

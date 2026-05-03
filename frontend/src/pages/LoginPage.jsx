@@ -23,10 +23,15 @@ export default function LoginPage() {
       return;
     }
     try {
-      await login(form.email, form.password);
-      navigate(ROUTES.DASHBOARD);
-    } catch {
-      setError('Invalid credentials');
+      const userData = await login(form.email, form.password);
+      // Route based on profile completion status
+      if (userData.has_profile) {
+        navigate(ROUTES.DASHBOARD);
+      } else {
+        navigate(ROUTES.ONBOARDING_PROFILE);
+      }
+    } catch (err) {
+      setError(err.message || 'Invalid credentials');
     }
   };
 
@@ -63,11 +68,6 @@ export default function LoginPage() {
 
       <div className="auth-footer">
         <p>Don't have an account? <Link to={ROUTES.REGISTER}>Create account</Link></p>
-      </div>
-
-      <div className="auth-demo-hint">
-        <span className="material-symbols-rounded">info</span>
-        <span>Demo: Use any email & password to sign in</span>
       </div>
     </Card>
   );

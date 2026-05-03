@@ -6,9 +6,10 @@ import Button from '../components/ui/Button';
 import { useAuth } from '../hooks/useAuth';
 import { ROUTES } from '../utils/routePaths';
 import './AuthPages.css';
+import './OnboardingPages.css';
 
 export default function RegisterPage() {
-  const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', confirmPassword: '' });
+  const [form, setForm] = useState({ email: '', password: '', confirmPassword: '', role: 'patient' });
   const [error, setError] = useState('');
   const { register, loading } = useAuth();
   const navigate = useNavigate();
@@ -18,7 +19,7 @@ export default function RegisterPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    if (!form.name || !form.email || !form.phone || !form.password) {
+    if (!form.email || !form.password) {
       setError('Please fill in all required fields');
       return;
     }
@@ -31,10 +32,10 @@ export default function RegisterPage() {
       return;
     }
     try {
-      await register(form);
-      navigate(ROUTES.DASHBOARD);
-    } catch {
-      setError('Registration failed');
+      await register({ email: form.email, password: form.password, role: form.role });
+      navigate(ROUTES.ONBOARDING_PROFILE);
+    } catch (err) {
+      setError(err.message || 'Registration failed');
     }
   };
 
@@ -53,9 +54,46 @@ export default function RegisterPage() {
       )}
 
       <form onSubmit={handleSubmit} className="auth-form">
-        <Input label="Full Name" name="name" value={form.name} onChange={handleChange} required icon="person" placeholder="John Doe" />
+        {/* Role Toggle */}
+        <div className="role-toggle">
+          <span className="role-toggle-label">I am a...</span>
+          <div className="role-toggle-options">
+            <div
+              className={`role-toggle-card ${form.role === 'patient' ? 'active' : ''}`}
+              onClick={() => setForm({ ...form, role: 'patient' })}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && setForm({ ...form, role: 'patient' })}
+            >
+              <div className="role-toggle-check">
+                <span className="material-symbols-rounded">check</span>
+              </div>
+              <div className="role-toggle-icon">
+                <span className="material-symbols-rounded">person</span>
+              </div>
+              <span className="role-toggle-text">Patient</span>
+              <span className="role-toggle-desc">Book appointments & manage health</span>
+            </div>
+            <div
+              className={`role-toggle-card ${form.role === 'doctor' ? 'active' : ''}`}
+              onClick={() => setForm({ ...form, role: 'doctor' })}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && setForm({ ...form, role: 'doctor' })}
+            >
+              <div className="role-toggle-check">
+                <span className="material-symbols-rounded">check</span>
+              </div>
+              <div className="role-toggle-icon">
+                <span className="material-symbols-rounded">stethoscope</span>
+              </div>
+              <span className="role-toggle-text">Doctor</span>
+              <span className="role-toggle-desc">Manage patients & availability</span>
+            </div>
+          </div>
+        </div>
+
         <Input label="Email" type="email" name="email" value={form.email} onChange={handleChange} required icon="mail" placeholder="your@email.com" />
-        <Input label="Phone" type="tel" name="phone" value={form.phone} onChange={handleChange} required icon="phone" placeholder="+1 555-000-0000" />
         <Input label="Password" type="password" name="password" value={form.password} onChange={handleChange} required icon="lock" placeholder="At least 6 characters" />
         <Input label="Confirm Password" type="password" name="confirmPassword" value={form.confirmPassword} onChange={handleChange} required icon="lock" placeholder="Confirm your password" />
 

@@ -16,6 +16,10 @@ import EmergencyHelpPage from '../pages/EmergencyHelpPage';
 import LoginPage from '../pages/LoginPage';
 import RegisterPage from '../pages/RegisterPage';
 
+// Onboarding Pages
+import ProfileOnboardingPage from '../pages/onboarding/ProfileOnboardingPage';
+import OnboardingLayout from '../layouts/OnboardingLayout';
+
 // Dashboard Pages
 import DashboardHome from '../features/dashboard/pages/DashboardHome';
 import AppointmentsPage from '../features/appointments/pages/AppointmentsPage';
@@ -55,9 +59,15 @@ const router = createBrowserRouter([
     ],
   },
 
-  // Protected app routes
+  // Onboarding routes (authenticated but no profile yet)
   {
-    element: <ProtectedRoute><DashboardLayout /></ProtectedRoute>,
+    element: <ProtectedRoute><OnboardingLayout /></ProtectedRoute>,
+    children: [
+      { path: '/onboarding/profile', element: <ProfileOnboardingPage /> },
+    ],
+  },
+  {
+    element: <ProtectedRoute requireProfile={true}><DashboardLayout /></ProtectedRoute>,
     children: [
       { path: '/app/dashboard', element: <DashboardHome /> },
       { path: '/app/appointments', element: <AppointmentsPage /> },

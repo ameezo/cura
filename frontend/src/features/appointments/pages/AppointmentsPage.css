@@ -14,3 +14,69 @@
 .apt-card-notes { font-size: var(--text-sm); color: var(--color-text-muted); margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--color-border-light); }
 
 @media (max-width: 640px) { .apt-card-row { flex-wrap: wrap; } .apt-card-right { flex-direction: row; width: 100%; } }
+
+/* Loading state */
+.apt-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-12) var(--space-4);
+  color: var(--color-text-muted);
+  gap: var(--space-4);
+}
+
+.apt-loading-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--color-border-light);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: apt-spin 0.8s linear infinite;
+}
+
+@keyframes apt-spin {
+  to { transform: rotate(360deg); }
+}
+
+.apt-loading p {
+  font-size: var(--text-sm);
+  margin: 0;
+}
+
+/* Error state */
+.apt-error-card {
+  margin-top: var(--space-4);
+}
+
+.apt-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-8) var(--space-4);
+  text-align: center;
+}
+
+.apt-error .material-symbols-rounded {
+  font-size: 40px;
+  color: var(--color-danger);
+}
+
+.apt-error p {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  margin: 0;
+}
+
+/* Cancel button */
+.apt-cancel-btn {
+  color: var(--color-danger) !important;
+  font-size: var(--text-xs) !important;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.apt-cancel-btn:hover {
+  opacity: 1;
+}

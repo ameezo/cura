@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback } from 'react';
 import { storage } from '../utils/storage';
-import { mockUser } from '../utils/mockData';
+import * as authApi from '../api/authApi';
 
 const AuthContext = createContext(null);
 
@@ -10,30 +10,30 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(async (email, password) => {
     setLoading(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    const userData = { ...mockUser, email };
-    setUser(userData);
-    storage.set('user', userData);
-    storage.set('token', 'mock-jwt-token-' + Date.now());
-    setLoading(false);
-    return userData;
+    try {
+      const data = await authApi.login({ email, password });
+      const userData = data.user;
+      setUser(userData);
+      storage.set('user', userData);
+      storage.set('token', data.access_token);
+      return userData;
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const register = useCallback(async (data) => {
+  const register = useCallback(async ({ email, password, role }) => {
     setLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    const userData = {
-      ...mockUser,
-      name: data.name,
-      email: data.email,
-      phone: data.phone,
-    };
-    setUser(userData);
-    storage.set('user', userData);
-    storage.set('token', 'mock-jwt-token-' + Date.now());
-    setLoading(false);
-    return userData;
+    try {
+      const data = await authApi.register({ email, password, role });
+      const userData = data.user;
+      setUser(userData);
+      storage.set('user', userData);
+      storage.set('token', data.access_token);
+      return userData;
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   const logout = useCallback(() => {
@@ -42,10 +42,30 @@ export function AuthProvider({ children }) {
     storage.remove('token');
   }, []);
 
+  const updateUser = useCallback((updatedUser) => {
+    setUser(updatedUser);
+    storage.set('user', updatedUser);
+  }, []);
+
+  const fetchMe = useCallback(async () => {
+    try {
+      const data = await authApi.getMe();
+      setUser(data);
+      storage.set('user', data);
+      return data;
+    } catch {
+      // If token is invalid, clear auth state
+      setUser(null);
+      storage.remove('user');
+      storage.remove('token');
+      return null;
+    }
+  }, []);
+
   const isAuthenticated = !!user;
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, loading, isAuthenticated }}>
+    <AuthContext.Provider value={{ user, login, register, logout, loading, isAuthenticated, updateUser, fetchMe }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,7 +1,7 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
 from app.models.user import User, UserRole
 from app import db
-from app.core.security import create_access_token
+from app.core.security import create_access_token, require_role
 import hashlib
 import uuid
 
@@ -25,12 +25,36 @@ def register():
         role = UserRole(role_str)
     except ValueError:
         return jsonify({"msg": "Invalid role"}), 400
+    
+    # Security: Only patient and doctor can self-register
+    # Admin accounts must be created manually in the database
+    if role not in (UserRole.PATIENT, UserRole.DOCTOR):
+        return jsonify({"msg": "Can only register as patient or doctor"}), 400
         
     user = User(email=email, password_hash=hash_password(password), role=role)
     db.session.add(user)
     db.session.commit()
     
-    return jsonify({"msg": "User created successfully", "user_id": user.id}), 201
+    # Return JWT so user is auto-logged-in after registration
+    access_token = create_access_token(
+        subject=user.id, role=user.role.value, is_verified=user.is_verified
+    )
+    has_profile = False
+    profile_id = None
+    
+    return jsonify({
+        "msg": "User created successfully",
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "role": user.role.value,
+            "is_verified": user.is_verified,
+            "has_profile": has_profile,
+            "profile_id": profile_id,
+        }
+    }), 201
 
 @auth_bp.route("/login", methods=["POST"])
 def login():
@@ -44,6 +68,17 @@ def login():
         
     access_token = create_access_token(subject=user.id, role=user.role.value, is_verified=user.is_verified)
     
+    has_profile = False
+    profile_id = None
+    if user.role == UserRole.PATIENT:
+        if user.patient_profile:
+            has_profile = True
+            profile_id = user.patient_profile.id
+    elif user.role == UserRole.DOCTOR:
+        if user.doctor_profile:
+            has_profile = True
+            profile_id = user.doctor_profile.id
+
     # we have to cancel this or something like that , once you login you actually dont have to see your credentials again
     return jsonify({
         "access_token": access_token,
@@ -52,7 +87,9 @@ def login():
             "id": user.id,
             "email": user.email,
             "role": user.role.value,
-            "is_verified": user.is_verified
+            "is_verified": user.is_verified,
+            "has_profile": has_profile,
+            "profile_id": profile_id
         }
     }), 200
 
@@ -68,4 +105,32 @@ def anonymous_guest():
             "id": guest_id,
             "role": "guest"
         }
+    }), 200
+
+@auth_bp.route("/me", methods=["GET"])
+@require_role(["guest", "patient", "doctor", "admin"])
+def get_me():
+    user_id = int(g.current_user["sub"])
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+    
+    has_profile = False
+    profile_id = None
+    if user.role == UserRole.PATIENT:
+        if user.patient_profile:
+            has_profile = True
+            profile_id = user.patient_profile.id
+    elif user.role == UserRole.DOCTOR:
+        if user.doctor_profile:
+            has_profile = True
+            profile_id = user.doctor_profile.id
+    
+    return jsonify({
+        "id": user.id,
+        "email": user.email,
+        "role": user.role.value,
+        "is_verified": user.is_verified,
+        "has_profile": has_profile,
+        "profile_id": profile_id,
     }), 200

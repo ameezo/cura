@@ -12,6 +12,9 @@ export const ROUTES = {
   LOGIN: '/login',
   REGISTER: '/register',
 
+  // Onboarding
+  ONBOARDING_PROFILE: '/onboarding/profile',
+
   // App (Protected)
   DASHBOARD: '/app/dashboard',
   PROFILE: '/app/profile',

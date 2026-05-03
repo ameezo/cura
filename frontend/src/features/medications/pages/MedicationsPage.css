@@ -23,3 +23,13 @@
 .med-detail .material-symbols-rounded { font-size: 16px; color: var(--color-primary); }
 
 .med-card-instructions { font-size: var(--text-xs); color: var(--color-text-muted); margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--color-border-light); font-style: italic; }
+
+/* Loading & Error */
+.meds-loading { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: var(--space-12) var(--space-4); color: var(--color-text-muted); gap: var(--space-4); }
+.meds-loading-spinner { width: 36px; height: 36px; border: 3px solid var(--color-border-light); border-top-color: var(--color-primary); border-radius: 50%; animation: meds-spin 0.8s linear infinite; }
+@keyframes meds-spin { to { transform: rotate(360deg); } }
+.meds-loading p { font-size: var(--text-sm); margin: 0; }
+.meds-error-card { margin-top: var(--space-4); }
+.meds-error { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); padding: var(--space-8) var(--space-4); text-align: center; }
+.meds-error .material-symbols-rounded { font-size: 40px; color: var(--color-danger); }
+.meds-error p { color: var(--color-text-muted); font-size: var(--text-sm); margin: 0; }

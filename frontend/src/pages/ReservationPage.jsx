@@ -1,32 +1,85 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import Alert from '../components/ui/Alert';
-import { mockDoctors } from '../utils/mockData';
 import { SPECIALTIES } from '../utils/constants';
+import { apiRequest } from '../api/client';
 import './ReservationPage.css';
 
-const TIME_SLOTS = ['09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM', '01:00 PM', '01:30 PM', '02:00 PM', '02:30 PM', '03:00 PM', '03:30 PM', '04:00 PM'];
+const formatTimeCustom = (timeStr) => {
+  if (!timeStr) return '';
+  const [hours, minutes] = timeStr.split(':');
+  const h = parseInt(hours, 10);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const displayH = h % 12 || 12;
+  return `${displayH}:${minutes} ${ampm}`;
+};
 
 export default function ReservationPage() {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
-    specialty: '', doctor: '', date: '', time: '', name: '', email: '', phone: '', notes: '',
+    specialty: '', doctor: '', date: '', slot_id: '', time: '', booking_type: 'online', name: '', email: '', phone: '', notes: '',
   });
+  
+  const [doctors, setDoctors] = useState([]);
+  const [loadingDoctors, setLoadingDoctors] = useState(true);
+  const [availableSlots, setAvailableSlots] = useState([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
 
-  const filteredDoctors = mockDoctors.filter((d) => !form.specialty || d.specialty === form.specialty);
+  // Fetch doctors on mount
+  useEffect(() => {
+    apiRequest('/doctors/')
+      .then(data => setDoctors(data))
+      .catch(err => console.error("Failed to load doctors:", err))
+      .finally(() => setLoadingDoctors(false));
+  }, []);
+
+  // Fetch slots when doctor and date change
+  useEffect(() => {
+    if (form.doctor && form.date) {
+      setLoadingSlots(true);
+      apiRequest(`/bookings/availability/${form.doctor}?date=${form.date}`)
+        .then(data => setAvailableSlots(data))
+        .catch(err => {
+          console.error("Failed to load slots:", err);
+          setAvailableSlots([]);
+        })
+        .finally(() => setLoadingSlots(false));
+    }
+  }, [form.doctor, form.date]);
+
+  const filteredDoctors = doctors.filter((d) => !form.specialty || d.specialization === form.specialty);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setSubmitted(true);
+    setSubmitError(null);
+    setIsSubmitting(true);
+    try {
+      await apiRequest('/bookings/appointments', {
+        method: 'POST',
+        body: JSON.stringify({
+          availability_id: form.slot_id,
+          booking_type: form.booking_type,
+          notes: form.notes
+        })
+      });
+      setSubmitted(true);
+    } catch (err) {
+      setSubmitError(err.message || 'Failed to book appointment. Please ensure you are logged in as a patient.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const selectedDoctor = mockDoctors.find((d) => d.id === form.doctor);
+  const selectedDoctor = doctors.find((d) => d.id === form.doctor);
 
   if (submitted) {
     return (
@@ -37,15 +90,20 @@ export default function ReservationPage() {
               <span className="material-symbols-rounded">check_circle</span>
             </div>
             <h2>Reservation Submitted!</h2>
-            <p>Your appointment request has been sent successfully. You will receive a confirmation shortly.</p>
+            <p>Your appointment request has been confirmed.</p>
             <Card className="reservation-summary-card">
-              <div className="summary-row"><span>Doctor</span><strong>{selectedDoctor?.name}</strong></div>
-              <div className="summary-row"><span>Specialty</span><strong>{selectedDoctor?.specialty}</strong></div>
+              <div className="summary-row"><span>Doctor</span><strong>{selectedDoctor?.full_name}</strong></div>
+              <div className="summary-row"><span>Specialty</span><strong>{selectedDoctor?.specialization}</strong></div>
               <div className="summary-row"><span>Date</span><strong>{form.date}</strong></div>
               <div className="summary-row"><span>Time</span><strong>{form.time}</strong></div>
-              <div className="summary-row"><span>Patient</span><strong>{form.name}</strong></div>
+              <div className="summary-row"><span>Type</span><strong>{form.booking_type === 'online' ? 'Online Consultation' : 'On-site Visit'}</strong></div>
             </Card>
-            <Button variant="primary" icon="home" onClick={() => { setSubmitted(false); setStep(1); setForm({ specialty: '', doctor: '', date: '', time: '', name: '', email: '', phone: '', notes: '' }); }}>
+            <Button variant="primary" icon="home" onClick={() => { 
+              setSubmitted(false); 
+              setStep(1); 
+              setForm({ specialty: '', doctor: '', date: '', slot_id: '', time: '', booking_type: 'online', name: '', email: '', phone: '', notes: '' }); 
+              setAvailableSlots([]);
+            }}>
               Book Another
             </Button>
           </div>
@@ -85,21 +143,31 @@ export default function ReservationPage() {
                 <div className="form-step animate-fade-in">
                   <h3>Choose a Doctor</h3>
                   <Select label="Specialty" name="specialty" value={form.specialty} onChange={handleChange} options={SPECIALTIES} placeholder="All specialties" icon="medical_services" />
-                  <div className="doctor-grid">
-                    {filteredDoctors.map((doc) => (
-                      <div key={doc.id} className={`doctor-option ${form.doctor === doc.id ? 'doctor-selected' : ''}`} onClick={() => setForm({ ...form, doctor: doc.id })}>
-                        <div className="doctor-option-avatar">
-                          <span className="material-symbols-rounded">person</span>
+                  
+                  {loadingDoctors ? (
+                    <div style={{ textAlign: 'center', padding: '2rem' }}>Loading doctors...</div>
+                  ) : (
+                    <div className="doctor-grid">
+                      {filteredDoctors.length > 0 ? filteredDoctors.map((doc) => (
+                        <div key={doc.id} className={`doctor-option ${form.doctor === doc.id ? 'doctor-selected' : ''}`} onClick={() => setForm({ ...form, doctor: doc.id })}>
+                          <div className="doctor-option-avatar">
+                            <span className="material-symbols-rounded">person</span>
+                          </div>
+                          <div className="doctor-option-info">
+                            <strong>{doc.full_name}</strong>
+                            <span>{doc.specialization}</span>
+                            <span className="doctor-option-meta">
+                              {doc.clinic_location ? `📍 ${doc.clinic_location}` : 'Online Only'}
+                            </span>
+                          </div>
+                          {form.doctor === doc.id && <span className="material-symbols-rounded doctor-check">check_circle</span>}
                         </div>
-                        <div className="doctor-option-info">
-                          <strong>{doc.name}</strong>
-                          <span>{doc.specialty}</span>
-                          <span className="doctor-option-meta">⭐ {doc.rating} · {doc.experience}</span>
-                        </div>
-                        {form.doctor === doc.id && <span className="material-symbols-rounded doctor-check">check_circle</span>}
-                      </div>
-                    ))}
-                  </div>
+                      )) : (
+                        <div style={{ textAlign: 'center', padding: '2rem', gridColumn: '1 / -1' }}>No doctors found for this specialty.</div>
+                      )}
+                    </div>
+                  )}
+                  
                   <div className="form-actions">
                     <Button variant="primary" iconRight="arrow_forward" onClick={() => setStep(2)} disabled={!form.doctor}>Continue</Button>
                   </div>
@@ -111,17 +179,40 @@ export default function ReservationPage() {
                 <div className="form-step animate-fade-in">
                   <h3>Pick Date & Time</h3>
                   <Input label="Date" type="date" name="date" value={form.date} onChange={handleChange} required icon="calendar_today" />
-                  <div className="time-slots">
-                    <label className="input-label">Preferred Time</label>
-                    <div className="time-grid">
-                      {TIME_SLOTS.map((t) => (
-                        <button type="button" key={t} className={`time-slot ${form.time === t ? 'time-active' : ''}`} onClick={() => setForm({ ...form, time: t })}>{t}</button>
-                      ))}
-                    </div>
+                  
+                  <div className="time-slots" style={{ marginTop: '1.5rem' }}>
+                    <label className="input-label">Available Times</label>
+                    
+                    {!form.date ? (
+                      <div style={{ color: 'var(--color-text-light)', padding: '1rem 0' }}>Please select a date to view available slots.</div>
+                    ) : loadingSlots ? (
+                      <div style={{ padding: '1rem 0' }}>Loading available times...</div>
+                    ) : availableSlots.length > 0 ? (
+                      <div className="time-grid">
+                        {availableSlots.map((slot) => {
+                          const startStr = formatTimeCustom(slot.start_time);
+                          return (
+                            <button 
+                              type="button" 
+                              key={slot.id} 
+                              disabled={slot.is_booked}
+                              className={`time-slot ${form.slot_id === slot.id ? 'time-active' : ''} ${slot.is_booked ? 'time-disabled' : ''}`} 
+                              onClick={() => setForm({ ...form, slot_id: slot.id, time: startStr })}
+                              style={slot.is_booked ? { opacity: 0.5, cursor: 'not-allowed', textDecoration: 'line-through' } : {}}
+                            >
+                              {startStr}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div style={{ color: 'var(--color-text-light)', padding: '1rem 0' }}>No available slots found for this date.</div>
+                    )}
                   </div>
+                  
                   <div className="form-actions">
                     <Button variant="ghost" icon="arrow_back" onClick={() => setStep(1)}>Back</Button>
-                    <Button variant="primary" iconRight="arrow_forward" onClick={() => setStep(3)} disabled={!form.date || !form.time}>Continue</Button>
+                    <Button variant="primary" iconRight="arrow_forward" onClick={() => setStep(3)} disabled={!form.date || !form.slot_id}>Continue</Button>
                   </div>
                 </div>
               )}
@@ -129,19 +220,39 @@ export default function ReservationPage() {
               {/* Step 3: Patient Details */}
               {step === 3 && (
                 <div className="form-step animate-fade-in">
-                  <h3>Your Details</h3>
-                  <Input label="Full Name" name="name" value={form.name} onChange={handleChange} required icon="person" placeholder="Enter your full name" />
-                  <Input label="Email" type="email" name="email" value={form.email} onChange={handleChange} required icon="mail" placeholder="your@email.com" />
-                  <Input label="Phone" type="tel" name="phone" value={form.phone} onChange={handleChange} required icon="phone" placeholder="+1 555-000-0000" />
+                  <h3>Appointment Details</h3>
+                  
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <label className="input-label">Booking Type</label>
+                    <div style={{ display: 'flex', gap: '1rem' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                        <input type="radio" name="booking_type" value="online" checked={form.booking_type === 'online'} onChange={handleChange} />
+                        Online Consultation
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                        <input type="radio" name="booking_type" value="onsite" checked={form.booking_type === 'onsite'} onChange={handleChange} />
+                        On-site Visit
+                      </label>
+                    </div>
+                  </div>
+
                   <Input label="Notes (optional)" type="textarea" name="notes" value={form.notes} onChange={handleChange} placeholder="Any additional information for the doctor..." rows={3} />
 
+                  {submitError && (
+                    <Alert variant="error" style={{ marginBottom: '1rem' }}>
+                      {submitError}
+                    </Alert>
+                  )}
+
                   <Alert variant="info">
-                    Your appointment with <strong>{selectedDoctor?.name}</strong> on {form.date} at {form.time} will be submitted for confirmation.
+                    Your appointment with <strong>{selectedDoctor?.full_name}</strong> on {form.date} at {form.time} will be submitted for confirmation.
                   </Alert>
 
                   <div className="form-actions">
                     <Button variant="ghost" icon="arrow_back" onClick={() => setStep(2)}>Back</Button>
-                    <Button variant="primary" type="submit" icon="check_circle" disabled={!form.name || !form.email || !form.phone}>Confirm Reservation</Button>
+                    <Button variant="primary" type="submit" icon="check_circle" disabled={isSubmitting || !form.booking_type}>
+                      {isSubmitting ? 'Confirming...' : 'Confirm Reservation'}
+                    </Button>
                   </div>
                 </div>
               )}

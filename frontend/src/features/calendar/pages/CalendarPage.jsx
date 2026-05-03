@@ -1,15 +1,79 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import PageHeader from '../../../components/ui/PageHeader';
 import Card from '../../../components/ui/Card';
 import Badge from '../../../components/ui/Badge';
-import { mockCalendarEvents } from '../../../utils/mockData';
+import { getAppointments } from '../../../api/bookingsApi';
+import { getDoctors } from '../../../api/doctorsApi';
+import { getAvailability } from '../../../api/bookingsApi';
+import { mapAppointment, formatTime } from '../../../api/mappers';
 import './CalendarPage.css';
+
+/**
+ * CalendarPage — wired to real appointment data.
+ *
+ * Builds calendar events from GET /bookings/appointments, enriched
+ * with doctor + availability data (same pattern as AppointmentsPage).
+ *
+ * Medications calendar events are excluded since the medication endpoint
+ * doesn't return per-day scheduling info suitable for calendar display.
+ */
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 export default function CalendarPage() {
-  const [currentDate, setCurrentDate] = useState(new Date(2026, 4, 1)); // May 2026
+  const [currentDate, setCurrentDate] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadEvents() {
+      setLoading(true);
+      try {
+        const rawApts = await getAppointments();
+        if (!rawApts.length) { setEvents([]); return; }
+
+        let doctorMap = {};
+        let slotMap = {};
+        try {
+          const doctors = await getDoctors();
+          doctorMap = Object.fromEntries(doctors.map(d => [d.id, d]));
+        } catch {}
+        try {
+          const slots = await getAvailability();
+          slotMap = Object.fromEntries(slots.map(s => [s.id, s]));
+        } catch {}
+
+        const calEvents = rawApts
+          .filter(apt => apt.status !== 'cancelled')
+          .map(apt => {
+            const doctor = doctorMap[apt.doctor_id] || {};
+            const slot = slotMap[apt.availability_id] || {};
+            return {
+              id: apt.id,
+              title: doctor.full_name || `Appointment #${apt.id}`,
+              date: slot.date || null,
+              time: slot.start_time ? formatTime(slot.start_time) : 'TBD',
+              type: 'appointment',
+              color: 'var(--color-primary)',
+              status: apt.status,
+            };
+          })
+          .filter(evt => evt.date); // Only include events with valid dates
+
+        setEvents(calEvents);
+      } catch {
+        setEvents([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadEvents();
+  }, []);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -22,14 +86,21 @@ export default function CalendarPage() {
 
   const getEventsForDay = (day) => {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    return mockCalendarEvents.filter((e) => e.date === dateStr);
+    return events.filter((e) => e.date === dateStr);
   };
 
-  const upcomingEvents = mockCalendarEvents.slice(0, 5);
+  // All upcoming events sorted by date
+  const upcomingEvents = events
+    .filter(e => {
+      const eventDate = new Date(e.date);
+      return eventDate >= new Date(today.toDateString());
+    })
+    .sort((a, b) => new Date(a.date) - new Date(b.date))
+    .slice(0, 5);
 
   return (
     <div className="calendar-page">
-      <PageHeader title="Calendar" subtitle="Your schedule at a glance" />
+      <PageHeader title="Calendar" subtitle={loading ? 'Loading events...' : `${events.length} events on your calendar`} />
 
       <div className="calendar-layout">
         <Card className="calendar-main">
@@ -52,14 +123,14 @@ export default function CalendarPage() {
             ))}
             {Array.from({ length: daysInMonth }).map((_, i) => {
               const day = i + 1;
-              const events = getEventsForDay(day);
+              const dayEvents = getEventsForDay(day);
               const isToday = day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
               return (
-                <div key={day} className={`cal-day ${isToday ? 'cal-day-today' : ''} ${events.length ? 'cal-day-has-events' : ''}`}>
+                <div key={day} className={`cal-day ${isToday ? 'cal-day-today' : ''} ${dayEvents.length ? 'cal-day-has-events' : ''}`}>
                   <span className="cal-day-num">{day}</span>
-                  {events.length > 0 && (
+                  {dayEvents.length > 0 && (
                     <div className="cal-day-dots">
-                      {events.slice(0, 3).map((e) => (
+                      {dayEvents.slice(0, 3).map((e) => (
                         <span key={e.id} className="cal-dot" style={{ background: e.color }} title={e.title} />
                       ))}
                     </div>
@@ -71,25 +142,29 @@ export default function CalendarPage() {
 
           <div className="cal-legend">
             <span className="cal-legend-item"><span className="cal-dot" style={{ background: 'var(--color-primary)' }} /> Appointments</span>
-            <span className="cal-legend-item"><span className="cal-dot" style={{ background: 'var(--color-success)' }} /> Medications</span>
-            <span className="cal-legend-item"><span className="cal-dot" style={{ background: 'var(--color-warning)' }} /> Lab Tests</span>
           </div>
         </Card>
 
         <Card className="calendar-sidebar">
           <h3 className="cal-sidebar-title">Upcoming Events</h3>
-          <div className="cal-events-list">
-            {upcomingEvents.map((evt) => (
-              <div key={evt.id} className="cal-event-item">
-                <div className="cal-event-dot" style={{ background: evt.color }} />
-                <div className="cal-event-info">
-                  <strong>{evt.title}</strong>
-                  <span>{evt.date} · {evt.time}</span>
+          {loading ? (
+            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', padding: 'var(--space-4) 0' }}>Loading...</p>
+          ) : upcomingEvents.length > 0 ? (
+            <div className="cal-events-list">
+              {upcomingEvents.map((evt) => (
+                <div key={evt.id} className="cal-event-item">
+                  <div className="cal-event-dot" style={{ background: evt.color }} />
+                  <div className="cal-event-info">
+                    <strong>{evt.title}</strong>
+                    <span>{evt.date} · {evt.time}</span>
+                  </div>
+                  <Badge variant={evt.status === 'confirmed' ? 'success' : 'warning'} size="sm">{evt.status}</Badge>
                 </div>
-                <Badge variant={evt.type === 'appointment' ? 'primary' : evt.type === 'medication' ? 'success' : 'warning'} size="sm">{evt.type}</Badge>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', padding: 'var(--space-4) 0' }}>No upcoming events.</p>
+          )}
         </Card>
       </div>
     </div>

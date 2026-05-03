@@ -61,6 +61,10 @@
 .dash-ai-content h4 { font-size: var(--text-lg); }
 .dash-ai-content p { font-size: var(--text-sm); opacity: 0.85; margin: 0; }
 
+/* Empty state hint */
+.dash-empty-hint { font-size: var(--text-sm); color: var(--color-text-muted); padding: var(--space-4) 0; margin: 0; }
+.dash-empty-hint a { color: var(--color-primary); text-decoration: underline; }
+
 @media (max-width: 1024px) { .dash-stats-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 768px) {
   .dash-main-grid { grid-template-columns: 1fr; }

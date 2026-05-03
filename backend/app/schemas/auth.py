@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, field_validator
 from typing import Optional
 
 class UserLogin(BaseModel):
@@ -8,7 +8,14 @@ class UserLogin(BaseModel):
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
-    role: Optional[str] = "guest"
+    role: str  # "patient" or "doctor"
+
+    @field_validator("role")
+    @classmethod
+    def validate_role(cls, v):
+        if v not in ("patient", "doctor"):
+            raise ValueError("Role must be 'patient' or 'doctor'")
+        return v
 
 class TokenResponse(BaseModel):
     access_token: str

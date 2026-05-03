@@ -1,18 +1,106 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Card from '../../../components/ui/Card';
 import Badge from '../../../components/ui/Badge';
 import Button from '../../../components/ui/Button';
 import { useAuth } from '../../../hooks/useAuth';
-import { mockAppointments, mockMedications, mockLabResults, mockNotifications } from '../../../utils/mockData';
+import { getAppointments } from '../../../api/bookingsApi';
+import { getDoctors } from '../../../api/doctorsApi';
+import { getAvailability } from '../../../api/bookingsApi';
+import { getPatientMedications } from '../../../api/medicationsApi';
+import { getMyReminders } from '../../../api/remindersApi';
+import { getPatientLabResults } from '../../../api/labResultsApi';
+import { mapAppointment } from '../../../api/mappers';
 import { ROUTES } from '../../../utils/routePaths';
 import './DashboardHome.css';
 
+/**
+ * DashboardHome — aggregation page.
+ *
+ * Wired data:
+ *   - Appointments: GET /bookings/appointments (enriched with doctors + availability)
+ *   - Medications:  GET /medications/patient/<user_id>
+ *   - Reminders:    GET /reminders/
+ *
+ * Still on mock data (no backend endpoint):
+ *   - Lab Results:  mockLabResults
+ */
 export default function DashboardHome() {
   const { user } = useAuth();
-  const nextApt = mockAppointments.find((a) => a.status === 'confirmed');
-  const activeMeds = mockMedications.filter((m) => m.active);
-  const unreadNotifs = mockNotifications.filter((n) => !n.read);
-  const latestLab = mockLabResults[0];
+
+  // Real data state
+  const [appointments, setAppointments] = useState([]);
+  const [medications, setMedications] = useState([]);
+  const [reminders, setReminders] = useState([]);
+  const [labResults, setLabResults] = useState([]);
+  const [loadingData, setLoadingData] = useState(true);
+
+  const latestLab = labResults.length > 0 ? labResults[0] : null;
+
+  useEffect(() => {
+    async function loadDashboard() {
+      setLoadingData(true);
+      const results = await Promise.allSettled([
+        loadAppointments(),
+        loadMedications(),
+        loadReminders(),
+        loadLabResults(),
+      ]);
+      setLoadingData(false);
+    }
+
+    async function loadAppointments() {
+      try {
+        const rawApts = await getAppointments();
+        if (!rawApts.length) { setAppointments([]); return; }
+
+        let doctorMap = {};
+        let slotMap = {};
+        try {
+          const doctors = await getDoctors();
+          doctorMap = Object.fromEntries(doctors.map(d => [d.id, d]));
+        } catch {}
+        try {
+          const slots = await getAvailability();
+          slotMap = Object.fromEntries(slots.map(s => [s.id, s]));
+        } catch {}
+
+        const enriched = rawApts.map(apt => mapAppointment(apt, doctorMap, slotMap));
+        setAppointments(enriched);
+      } catch {
+        setAppointments([]);
+      }
+    }
+
+    async function loadMedications() {
+      try {
+        const data = await getPatientMedications(user?.profile_id || user?.id);
+        setMedications(data);
+      } catch {
+        setMedications([]);
+      }
+    }
+
+    async function loadReminders() {
+      try {
+        const data = await getMyReminders();
+        setReminders(data);
+      } catch {
+        setReminders([]);
+      }
+    }
+
+    async function loadLabResults() {
+      try {
+        const data = await getPatientLabResults();
+        setLabResults(data);
+      } catch {
+        setLabResults([]);
+      }
+    }
+
+    loadDashboard();
+  }, [user?.id]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -21,12 +109,20 @@ export default function DashboardHome() {
     return 'Good Evening';
   };
 
+  // Derive display name from user object
+  const displayName = user?.email?.split('@')[0] || 'there';
+
+  const nextApt = appointments.find((a) => a.status === 'confirmed' || a.status === 'pending');
+  const upcomingCount = appointments.filter(a => a.status !== 'completed' && a.status !== 'cancelled').length;
+  const activeMeds = medications.filter((m) => m.is_active);
+  const pendingReminders = reminders.filter((r) => r.status === 'pending');
+
   return (
     <div className="dashboard-home">
       {/* Greeting */}
       <div className="dash-greeting animate-fade-in-up">
         <div>
-          <h1>{getGreeting()}, {user?.name?.split(' ')[0] || 'there'} 👋</h1>
+          <h1>{getGreeting()}, {displayName} 👋</h1>
           <p>Here's an overview of your health today.</p>
         </div>
         <Link to={ROUTES.AI_CHAT}>
@@ -36,12 +132,12 @@ export default function DashboardHome() {
 
       {/* Quick Stats */}
       <div className="dash-stats-grid">
-        <Card className="dash-stat-card" hover onClick={() => {}}>
+        <Card className="dash-stat-card" hover>
           <div className="dash-stat-icon" style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
             <span className="material-symbols-rounded">calendar_month</span>
           </div>
           <div className="dash-stat-info">
-            <span className="dash-stat-value">{mockAppointments.filter(a => a.status !== 'completed' && a.status !== 'cancelled').length}</span>
+            <span className="dash-stat-value">{loadingData ? '–' : upcomingCount}</span>
             <span className="dash-stat-label">Upcoming</span>
           </div>
         </Card>
@@ -50,7 +146,7 @@ export default function DashboardHome() {
             <span className="material-symbols-rounded">medication</span>
           </div>
           <div className="dash-stat-info">
-            <span className="dash-stat-value">{activeMeds.length}</span>
+            <span className="dash-stat-value">{loadingData ? '–' : activeMeds.length}</span>
             <span className="dash-stat-label">Active Meds</span>
           </div>
         </Card>
@@ -59,7 +155,7 @@ export default function DashboardHome() {
             <span className="material-symbols-rounded">science</span>
           </div>
           <div className="dash-stat-info">
-            <span className="dash-stat-value">{mockLabResults.length}</span>
+            <span className="dash-stat-value">{loadingData ? '–' : labResults.length}</span>
             <span className="dash-stat-label">Lab Results</span>
           </div>
         </Card>
@@ -68,8 +164,8 @@ export default function DashboardHome() {
             <span className="material-symbols-rounded">notifications</span>
           </div>
           <div className="dash-stat-info">
-            <span className="dash-stat-value">{unreadNotifs.length}</span>
-            <span className="dash-stat-label">Unread</span>
+            <span className="dash-stat-value">{loadingData ? '–' : pendingReminders.length}</span>
+            <span className="dash-stat-label">Pending</span>
           </div>
         </Card>
       </div>
@@ -79,12 +175,12 @@ export default function DashboardHome() {
         {/* Left Column */}
         <div className="dash-col-left">
           {/* Next Appointment */}
-          {nextApt && (
-            <Card className="dash-card animate-fade-in-up">
-              <div className="dash-card-header">
-                <h3><span className="material-symbols-rounded">event</span> Next Appointment</h3>
-                <Link to={ROUTES.APPOINTMENTS}><Button variant="ghost" size="sm">View All</Button></Link>
-              </div>
+          <Card className="dash-card animate-fade-in-up">
+            <div className="dash-card-header">
+              <h3><span className="material-symbols-rounded">event</span> Next Appointment</h3>
+              <Link to={ROUTES.APPOINTMENTS}><Button variant="ghost" size="sm">View All</Button></Link>
+            </div>
+            {nextApt ? (
               <div className="dash-apt-preview">
                 <div className="dash-apt-avatar">
                   <span className="material-symbols-rounded">person</span>
@@ -99,29 +195,35 @@ export default function DashboardHome() {
                 </div>
                 <Badge variant="success">{nextApt.status}</Badge>
               </div>
-            </Card>
-          )}
+            ) : (
+              <p className="dash-empty-hint">No upcoming appointments. <Link to="/reservation">Book one now</Link>.</p>
+            )}
+          </Card>
 
           {/* Medication Reminders */}
           <Card className="dash-card animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
             <div className="dash-card-header">
-              <h3><span className="material-symbols-rounded">medication</span> Medications Today</h3>
+              <h3><span className="material-symbols-rounded">medication</span> Active Medications</h3>
               <Link to={ROUTES.MEDICATIONS}><Button variant="ghost" size="sm">View All</Button></Link>
             </div>
-            <div className="dash-meds-list">
-              {activeMeds.map((med) => (
-                <div key={med.id} className="dash-med-item">
-                  <div className="dash-med-icon">
-                    <span className="material-symbols-rounded">pill</span>
+            {activeMeds.length > 0 ? (
+              <div className="dash-meds-list">
+                {activeMeds.slice(0, 4).map((med) => (
+                  <div key={med.id} className="dash-med-item">
+                    <div className="dash-med-icon">
+                      <span className="material-symbols-rounded">pill</span>
+                    </div>
+                    <div className="dash-med-info">
+                      <strong>{med.name}</strong>
+                      <span>{med.dosage} · {med.form}</span>
+                    </div>
+                    <span className="dash-med-time">{med.frequency_type}</span>
                   </div>
-                  <div className="dash-med-info">
-                    <strong>{med.name}</strong>
-                    <span>{med.dosage} · {med.frequency}</span>
-                  </div>
-                  <span className="dash-med-time">{med.time.split(',')[0]}</span>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <p className="dash-empty-hint">No active medications.</p>
+            )}
           </Card>
         </div>
 
@@ -145,23 +247,27 @@ export default function DashboardHome() {
             </Card>
           )}
 
-          {/* Notifications */}
+          {/* Reminders — real data */}
           <Card className="dash-card animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
             <div className="dash-card-header">
-              <h3><span className="material-symbols-rounded">notifications</span> Recent Notifications</h3>
+              <h3><span className="material-symbols-rounded">notifications</span> Pending Reminders</h3>
               <Link to={ROUTES.NOTIFICATIONS}><Button variant="ghost" size="sm">View All</Button></Link>
             </div>
-            <div className="dash-notif-list">
-              {mockNotifications.slice(0, 4).map((n) => (
-                <div key={n.id} className={`dash-notif-item ${!n.read ? 'dash-notif-unread' : ''}`}>
-                  <div className="dash-notif-dot" />
-                  <div className="dash-notif-content">
-                    <strong>{n.title}</strong>
-                    <span>{n.message}</span>
+            {pendingReminders.length > 0 ? (
+              <div className="dash-notif-list">
+                {pendingReminders.slice(0, 4).map((r) => (
+                  <div key={r.id} className="dash-notif-item dash-notif-unread">
+                    <div className="dash-notif-dot" />
+                    <div className="dash-notif-content">
+                      <strong>{r.title}</strong>
+                      <span>{r.message}</span>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <p className="dash-empty-hint">All caught up! No pending reminders.</p>
+            )}
           </Card>
 
           {/* AI Quick */}

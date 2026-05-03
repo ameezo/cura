@@ -423,9 +423,10 @@ Base prefix for everything below:
 
 | Method | Endpoint | Access | Purpose |
 |---|---|---|---|
-| POST | `/auth/register` | Public | Register a new user |
+| POST | `/auth/register` | Public | Register a new user (returns JWT) |
 | POST | `/auth/login` | Public | Login and receive JWT |
 | POST | `/auth/anonymous-guest` | Public | Get guest JWT |
+| GET | `/auth/me` | All authenticated | Get current user info + profile status |
 
 ### Patients
 
@@ -526,6 +527,58 @@ This payload should be sent by the frontend when a patient profile is being crea
 
 This data should come from the user through a frontend form, then be validated in the frontend, sent to the backend, and validated again by the backend schema.
 
+### Registration flow
+
+The registration flow is a two-step process:
+
+1. **Register Page** — Collects `email`, `password`, and `role` (patient or doctor toggle). Sends `POST /auth/register { email, password, role }`. Backend creates User and returns JWT.
+2. **Profile Onboarding Page** — After registration, the user is redirected to `/onboarding/profile`. Based on their role, they see a patient form (`POST /patients/`) or doctor form (`POST /doctors/`).
+
+Important rules:
+
+- Only `patient` and `doctor` can self-register. Admin accounts are created manually in the database.
+- Registration returns a JWT immediately (auto-login). The user does not need to visit the login page.
+- The `GET /auth/me` endpoint returns `has_profile: true/false` to determine if the user has completed onboarding.
+- Doctor accounts require admin verification (`is_verified`) before accessing protected doctor features.
+
+### Register payload
+
+```json
+{
+  "email": "user@example.com",
+  "password": "securepassword",
+  "role": "patient"
+}
+```
+
+### Register response
+
+```json
+{
+  "msg": "User created successfully",
+  "access_token": "eyJhbGciOiJI...",
+  "token_type": "bearer",
+  "user": {
+    "id": 1,
+    "email": "user@example.com",
+    "role": "patient",
+    "is_verified": false
+  }
+}
+```
+
+### `/auth/me` response
+
+```json
+{
+  "id": 1,
+  "email": "user@example.com",
+  "role": "patient",
+  "is_verified": false,
+  "has_profile": true
+}
+```
+
 ---
 
 ## Recommended Frontend API Files
@@ -546,6 +599,12 @@ export function login(payload) {
   return apiRequest("/auth/login", {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+export function getMe() {
+  return apiRequest("/auth/me", {
+    method: "GET",
   });
 }
 
