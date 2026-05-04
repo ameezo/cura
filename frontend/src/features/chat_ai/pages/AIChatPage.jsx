@@ -13,8 +13,16 @@ export default function AIChatPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [clearing, setClearing] = useState(false);
+  const [showDisclaimer, setShowDisclaimer] = useState(
+    () => sessionStorage.getItem('cura_ai_disclaimer_dismissed') !== 'true'
+  );
   const chatEndRef = useRef(null);
   const textareaRef = useRef(null);
+
+  const dismissDisclaimer = () => {
+    setShowDisclaimer(false);
+    sessionStorage.setItem('cura_ai_disclaimer_dismissed', 'true');
+  };
 
   // ── Load message history on mount ─────────────────────────────────────
   const loadMessages = useCallback(async () => {
@@ -158,10 +166,17 @@ export default function AIChatPage() {
       </div>
 
       {/* Disclaimer */}
-      <Alert variant="warning" className="chat-disclaimer">
-        <span className="material-symbols-rounded" style={{ fontSize: '18px', verticalAlign: 'middle', marginRight: '6px' }}>info</span>
-        This AI provides <strong>general health information only</strong>. It does not replace professional medical advice, diagnosis, or treatment. Always consult your healthcare provider.
-      </Alert>
+      {showDisclaimer && (
+        <div className="chat-disclaimer">
+          <span className="material-symbols-rounded chat-disclaimer-icon">info</span>
+          <span className="chat-disclaimer-text">
+            This AI provides <strong>general health information only</strong>. It does not replace professional medical advice, diagnosis, or treatment.
+          </span>
+          <button className="chat-disclaimer-close" onClick={dismissDisclaimer} aria-label="Dismiss">
+            <span className="material-symbols-rounded">close</span>
+          </button>
+        </div>
+      )}
 
       {/* Chat Container */}
       <Card className="chat-container" padding="none">

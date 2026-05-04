@@ -233,3 +233,9 @@
     padding: var(--space-8) var(--space-5) !important;
   }
 }
+
+/* Dark mode */
+[data-theme="dark"] .pending-shape {
+  opacity: 0.06;
+}
+

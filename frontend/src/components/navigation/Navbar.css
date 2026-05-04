@@ -118,3 +118,38 @@
   padding-top: var(--space-3);
   border-top: 1px solid var(--color-border-light);
 }
+
+/* Theme toggle button */
+.navbar-theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-xs);
+  color: var(--color-text-muted);
+  transition: all var(--transition-fast);
+  cursor: pointer;
+  background: none;
+  border: none;
+}
+
+.navbar-theme-toggle:hover {
+  background: var(--color-surface-soft);
+  color: var(--color-primary);
+}
+
+.navbar-theme-toggle .material-symbols-rounded {
+  font-size: 22px;
+  transition: transform var(--transition-base);
+}
+
+.navbar-theme-toggle:hover .material-symbols-rounded {
+  transform: rotate(25deg);
+}
+
+/* Dark mode — fix navbar glass effect */
+[data-theme="dark"] .navbar {
+  background: rgba(15, 17, 23, 0.85);
+}
+

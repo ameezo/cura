@@ -3,11 +3,13 @@ import CuraLogo from '../CuraLogo';
 import Avatar from '../ui/Avatar';
 import { SIDEBAR_LINKS, ROLE_LABELS } from '../../utils/routePaths';
 import { useAuth } from '../../hooks/useAuth';
+import { useTheme } from '../../hooks/useTheme';
 import './Sidebar.css';
 
 export default function Sidebar({ collapsed = false, onToggle }) {
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { isDark, toggleTheme } = useTheme();
 
   const roleLabel = ROLE_LABELS[user?.role] || 'User';
 
@@ -45,6 +47,20 @@ export default function Sidebar({ collapsed = false, onToggle }) {
           );
         })}
       </nav>
+
+      <div className="sidebar-theme-toggle">
+        <button
+          className="sidebar-theme-btn"
+          onClick={toggleTheme}
+          title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+          aria-label="Toggle theme"
+        >
+          <span className="material-symbols-rounded">
+            {isDark ? 'light_mode' : 'dark_mode'}
+          </span>
+          {!collapsed && <span className="sidebar-theme-label">{isDark ? 'Light Mode' : 'Night Mode'}</span>}
+        </button>
+      </div>
 
       <div className="sidebar-footer">
         <div className="sidebar-user" title={collapsed ? (user?.name || 'User') : undefined}>

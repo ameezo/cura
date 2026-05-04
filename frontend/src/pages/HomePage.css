@@ -356,3 +356,17 @@
   .steps-grid { grid-template-columns: 1fr; gap: var(--space-10); }
   .trust-grid { grid-template-columns: 1fr; }
 }
+
+/* Dark mode overrides */
+[data-theme="dark"] .hero-center-icon {
+  box-shadow: 0 8px 30px rgba(122, 184, 255, 0.2);
+}
+
+[data-theme="dark"] .how-it-works {
+  background: var(--color-surface);
+}
+
+[data-theme="dark"] .hero-card {
+  box-shadow: var(--shadow-lg);
+}
+

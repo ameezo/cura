@@ -6,8 +6,10 @@ import Button from '../components/ui/Button';
 import Alert from '../components/ui/Alert';
 import Avatar from '../components/ui/Avatar';
 import { useAuth } from '../hooks/useAuth';
+import { useTheme } from '../hooks/useTheme';
 import { getPatientById, updatePatient } from '../api/patientsApi';
 import { getDoctorById, updateDoctor } from '../api/doctorsApi';
+import { updatePassword, deleteAccount } from '../api/authApi';
 import './SettingsPage.css';
 
 /**
@@ -23,10 +25,19 @@ import './SettingsPage.css';
  */
 export default function SettingsPage() {
   const { user, fetchMe } = useAuth();
+  const { isDark, toggleTheme } = useTheme();
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+
+  // Password state
+  const [passwords, setPasswords] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [passwordUpdating, setPasswordUpdating] = useState(false);
 
   // Patient form state
   const [patientForm, setPatientForm] = useState({
@@ -112,6 +123,50 @@ export default function SettingsPage() {
   const handleDoctorChange = (e) =>
     setDoctorForm({ ...doctorForm, [e.target.name]: e.target.value });
 
+  const handlePasswordInput = (e) =>
+    setPasswords({ ...passwords, [e.target.name]: e.target.value });
+
+  const handleUpdatePassword = async () => {
+    if (!passwords.currentPassword || !passwords.newPassword || !passwords.confirmPassword) {
+      setError("Please fill in all password fields.");
+      return;
+    }
+    if (passwords.newPassword !== passwords.confirmPassword) {
+      setError("New passwords do not match.");
+      return;
+    }
+    if (passwords.newPassword.length < 6 || !/(?=.*[a-zA-Z])(?=.*\d)(?=.*[^a-zA-Z\d\s])/.test(passwords.newPassword)) {
+      setError("New password must be at least 6 characters and include a letter, a number, and a special character.");
+      return;
+    }
+    setPasswordUpdating(true);
+    setError(null);
+    try {
+      await updatePassword({
+        current_password: passwords.currentPassword,
+        new_password: passwords.newPassword,
+      });
+      setSaved(true);
+      setPasswords({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      setError(err.message || 'Failed to update password.');
+    } finally {
+      setPasswordUpdating(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!window.confirm("Are you sure you want to delete your account? This action cannot be undone.")) return;
+    try {
+      await deleteAccount();
+      localStorage.removeItem('access_token');
+      window.location.href = '/login';
+    } catch (err) {
+      setError(err.message || 'Failed to delete account.');
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     setError(null);
@@ -184,15 +239,15 @@ export default function SettingsPage() {
               <Input label="Full Name" name="full_name" value={doctorForm.full_name} onChange={handleDoctorChange} icon="badge" />
               <Input label="Specialization" name="specialization" value={doctorForm.specialization} onChange={handleDoctorChange} icon="medical_services" />
               <Input label="Clinic Location" name="clinic_location" value={doctorForm.clinic_location} onChange={handleDoctorChange} icon="location_on" />
-              <Input label="Contact Phone" name="contact_phone" type="tel" value={doctorForm.contact_phone} onChange={handleDoctorChange} icon="phone" />
+              <Input label="Contact Phone" name="contact_phone" type="tel" value={doctorForm.contact_phone} onChange={handleDoctorChange} icon="phone" placeholder="+962 7X XXX XXXX" pattern="^\+962\s?[0-9]{8,9}$" title="Must be a valid Jordanian number starting with +962" />
             </div>
           ) : (
             <div className="settings-fields">
               <Input label="First Name" name="first_name" value={patientForm.first_name} onChange={handlePatientChange} icon="person" />
               <Input label="Last Name" name="last_name" value={patientForm.last_name} onChange={handlePatientChange} icon="person" />
               <Input label="Email" type="email" value={user?.email || ''} icon="mail" disabled />
-              <Input label="Phone" name="phone_number" type="tel" value={patientForm.phone_number} onChange={handlePatientChange} icon="phone" />
-              <Input label="Date of Birth" name="date_of_birth" type="date" value={patientForm.date_of_birth} onChange={handlePatientChange} icon="cake" />
+              <Input label="Phone" name="phone_number" type="tel" value={patientForm.phone_number} onChange={handlePatientChange} icon="phone" placeholder="+962 7X XXX XXXX" pattern="^\+962\s?[0-9]{8,9}$" title="Must be a valid Jordanian number starting with +962" />
+              <Input label="Date of Birth" name="date_of_birth" type="date" value={patientForm.date_of_birth} onChange={handlePatientChange} icon="cake" disabled={true} />
             </div>
           )}
 
@@ -204,18 +259,18 @@ export default function SettingsPage() {
           <h3 className="settings-section-title">Preferences</h3>
           <div className="settings-option">
             <div>
-              <strong>Email Notifications</strong>
-              <p>Receive appointment reminders and updates via email</p>
+              <strong>Night Mode</strong>
+              <p>Switch to a darker theme for comfortable viewing</p>
             </div>
             <label className="settings-toggle">
-              <input type="checkbox" defaultChecked />
+              <input type="checkbox" checked={isDark} onChange={toggleTheme} />
               <span className="toggle-slider" />
             </label>
           </div>
           <div className="settings-option">
             <div>
-              <strong>SMS Reminders</strong>
-              <p>Get medication reminders via text message</p>
+              <strong>Email Notifications</strong>
+              <p>Receive appointment reminders and updates via email</p>
             </div>
             <label className="settings-toggle">
               <input type="checkbox" defaultChecked />
@@ -238,11 +293,11 @@ export default function SettingsPage() {
         <Card className="settings-card">
           <h3 className="settings-section-title">Security</h3>
           <div className="settings-fields">
-            <Input label="Current Password" type="password" icon="lock" placeholder="Enter current password" />
-            <Input label="New Password" type="password" icon="lock" placeholder="Enter new password" />
-            <Input label="Confirm New Password" type="password" icon="lock" placeholder="Confirm new password" />
+            <Input label="Current Password" name="currentPassword" type="password" value={passwords.currentPassword} onChange={handlePasswordInput} icon="lock" placeholder="Enter current password" />
+            <Input label="New Password" name="newPassword" type="password" value={passwords.newPassword} onChange={handlePasswordInput} icon="lock" placeholder="Enter new password" />
+            <Input label="Confirm New Password" name="confirmPassword" type="password" value={passwords.confirmPassword} onChange={handlePasswordInput} icon="lock" placeholder="Confirm new password" />
           </div>
-          <Button variant="outline" icon="key">Update Password</Button>
+          <Button variant="outline" icon="key" onClick={handleUpdatePassword} loading={passwordUpdating}>Update Password</Button>
         </Card>
 
         {/* Danger Zone */}
@@ -251,7 +306,7 @@ export default function SettingsPage() {
           <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-4)' }}>
             Once you delete your account, there is no going back. Please be certain.
           </p>
-          <Button variant="danger" icon="delete_forever">Delete Account</Button>
+          <Button variant="danger" icon="delete_forever" onClick={handleDeleteAccount}>Delete Account</Button>
         </Card>
       </div>
     </div>

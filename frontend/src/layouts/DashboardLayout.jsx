@@ -3,6 +3,7 @@ import { Outlet, Link, useLocation } from 'react-router-dom';
 import Sidebar from '../components/navigation/Sidebar';
 import Avatar from '../components/ui/Avatar';
 import { useAuth } from '../hooks/useAuth';
+import { useTheme } from '../hooks/useTheme';
 import { SIDEBAR_LINKS } from '../utils/routePaths';
 import './DashboardLayout.css';
 
@@ -10,6 +11,7 @@ export default function DashboardLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const { user } = useAuth();
+  const { isDark, toggleTheme } = useTheme();
   const location = useLocation();
 
   return (
@@ -28,6 +30,16 @@ export default function DashboardLayout() {
           </button>
 
           <div className="dashboard-topbar-right">
+            <button
+              className="dashboard-topbar-icon"
+              onClick={toggleTheme}
+              title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+              aria-label="Toggle theme"
+            >
+              <span className="material-symbols-rounded">
+                {isDark ? 'light_mode' : 'dark_mode'}
+              </span>
+            </button>
             <Link to="/app/notifications" className="dashboard-topbar-icon" title="Notifications">
               <span className="material-symbols-rounded">notifications</span>
               <span className="topbar-notif-dot" />

@@ -303,3 +303,17 @@
 @media (max-width: 480px) {
   .available-slots-grid { grid-template-columns: 1fr; }
 }
+
+/* Dark mode */
+[data-theme="dark"] .reservation-hero {
+  background: linear-gradient(160deg, var(--color-surface-soft), var(--color-bg));
+}
+
+[data-theme="dark"] .my-bookings-section {
+  background: var(--color-surface);
+}
+
+[data-theme="dark"] .booking-modal-summary {
+  background: var(--color-surface-soft);
+}
+

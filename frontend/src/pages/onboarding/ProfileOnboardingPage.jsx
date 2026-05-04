@@ -176,7 +176,9 @@ export default function ProfileOnboardingPage() {
                 value={doctorForm.contact_phone}
                 onChange={handleDoctorChange}
                 icon="phone"
-                placeholder="+1 555-000-0000"
+                placeholder="+962 7X XXX XXXX"
+                pattern="^\+962\s?[0-9]{8,9}$"
+                title="Must be a valid Jordanian number starting with +962"
               />
             </>
           ) : (
@@ -225,7 +227,6 @@ export default function ProfileOnboardingPage() {
                       <option value="">Select gender</option>
                       <option value="Male">Male</option>
                       <option value="Female">Female</option>
-                      <option value="Other">Other</option>
                     </select>
                   </div>
                 </div>
@@ -237,7 +238,9 @@ export default function ProfileOnboardingPage() {
                 value={patientForm.phone_number}
                 onChange={handlePatientChange}
                 icon="phone"
-                placeholder="+1 555-000-0000"
+                placeholder="+962 7X XXX XXXX"
+                pattern="^\+962\s?[0-9]{8,9}$"
+                title="Must be a valid Jordanian number starting with +962"
               />
               <Input
                 label="Medical History"

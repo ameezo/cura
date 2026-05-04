@@ -47,3 +47,9 @@
   .safety-tips-grid { grid-template-columns: 1fr; }
   .emergency-contact-row { flex-wrap: wrap; }
 }
+
+/* Dark mode */
+[data-theme="dark"] .emergency-hero {
+  background: linear-gradient(160deg, rgba(240, 112, 128, 0.08) 0%, var(--color-bg) 60%);
+}
+

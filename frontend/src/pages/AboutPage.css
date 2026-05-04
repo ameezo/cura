@@ -83,3 +83,17 @@
 @media (max-width: 480px) {
   .values-grid { grid-template-columns: 1fr; }
 }
+
+/* Dark mode */
+[data-theme="dark"] .about-hero {
+  background: linear-gradient(160deg, var(--color-surface) 0%, var(--color-bg) 50%, var(--color-surface-soft) 100%);
+}
+
+[data-theme="dark"] .about-values {
+  background: var(--color-surface);
+}
+
+[data-theme="dark"] .ai-visual-card {
+  background: var(--color-surface);
+}
+

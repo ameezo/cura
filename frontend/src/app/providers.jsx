@@ -1,9 +1,12 @@
 import { AuthProvider } from '../hooks/useAuth';
+import { ThemeProvider } from '../hooks/useTheme';
 
 export default function Providers({ children }) {
   return (
-    <AuthProvider>
-      {children}
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        {children}
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

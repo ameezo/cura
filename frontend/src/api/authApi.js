@@ -29,3 +29,16 @@ export function loginAsGuest() {
     method: "POST",
   });
 }
+
+export function updatePassword(payload) {
+  return apiRequest("/auth/update-password", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteAccount() {
+  return apiRequest("/auth/delete-account", {
+    method: "DELETE",
+  });
+}

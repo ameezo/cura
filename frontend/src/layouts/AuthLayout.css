@@ -62,3 +62,13 @@
   margin-bottom: var(--space-8);
   animation: fadeInDown 0.5s ease;
 }
+
+/* Dark mode auth layout */
+[data-theme="dark"] .auth-layout {
+  background: linear-gradient(135deg, #0f1117 0%, #181b25 40%, #1e2233 100%);
+}
+
+[data-theme="dark"] .auth-shape {
+  opacity: 0.06;
+}
+

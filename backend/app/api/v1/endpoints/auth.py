@@ -21,6 +21,13 @@ def register():
     if User.query.filter_by(email=email).first():
         return jsonify({"msg": "Email already registered"}), 400
         
+    if len(password) < 6:
+        return jsonify({"msg": "Password must be at least 6 characters long"}), 400
+        
+    import re
+    if not re.search(r"[a-zA-Z]", password) or not re.search(r"\d", password) or not re.search(r"[^a-zA-Z\d\s]", password):
+        return jsonify({"msg": "Password must contain a letter, a number, and a special character"}), 400
+        
     try:
         role = UserRole(role_str)
     except ValueError:
@@ -152,3 +159,99 @@ def get_me():
         "profile_id": profile_id,
         "name": name,
     }), 200
+
+@auth_bp.route("/update-password", methods=["PUT"])
+@require_role(["guest", "patient", "doctor", "admin"], allow_unverified=True)
+def update_password():
+    user_id = int(g.current_user["sub"])
+    data = request.json
+    current_password = data.get("current_password")
+    new_password = data.get("new_password")
+    
+    if not current_password or not new_password:
+        return jsonify({"msg": "Both current and new passwords are required"}), 400
+        
+    if len(new_password) < 6:
+        return jsonify({"msg": "New password must be at least 6 characters long."}), 400
+        
+    import re
+    if not re.search(r"[a-zA-Z]", new_password) or not re.search(r"\d", new_password) or not re.search(r"[^a-zA-Z\d\s]", new_password):
+        return jsonify({"msg": "New password must contain a letter, a number, and a special character."}), 400
+        
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+        
+    if user.password_hash != hash_password(current_password):
+        return jsonify({"msg": "Incorrect current password"}), 400
+        
+    user.password_hash = hash_password(new_password)
+    db.session.commit()
+    
+    return jsonify({"msg": "Password updated successfully"}), 200
+
+@auth_bp.route("/delete-account", methods=["DELETE"])
+@require_role(["guest", "patient", "doctor", "admin"], allow_unverified=True)
+def delete_account():
+    if g.current_user["role"] == "guest":
+        return jsonify({"msg": "Guest account cleared"}), 200
+        
+    user_id = int(g.current_user["sub"])
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+        
+    try:
+        # Manually cascade deletes to avoid IntegrityError missing ON DELETE CASCADE
+        from app.models.ai_conversation import AIConversation, AIMessage
+        from app.models.appointment import Appointment
+        from app.models.medication import Medication
+        from app.models.lab_result import LabResult
+        from app.models.reminder import Reminder
+        from app.models.availability import DoctorAvailability
+        from app.models.notification_log import NotificationLog
+        
+        # 1. AI Conversations
+        convs = AIConversation.query.filter_by(user_id=user.id).all()
+        for c in convs:
+            AIMessage.query.filter_by(conversation_id=c.id).delete()
+        AIConversation.query.filter_by(user_id=user.id).delete()
+        
+        # 2. Profiles and Dependencies
+        if user.role == UserRole.PATIENT and user.patient_profile:
+            p_id = user.patient_profile.id
+            # Reminder logs
+            rems = Reminder.query.filter_by(patient_id=p_id).all()
+            for r in rems:
+                NotificationLog.query.filter_by(reminder_id=r.id).delete()
+            Reminder.query.filter_by(patient_id=p_id).delete()
+            LabResult.query.filter_by(patient_id=p_id).delete()
+            Medication.query.filter_by(patient_id=p_id).delete()
+            Appointment.query.filter_by(patient_id=p_id).delete()
+            db.session.delete(user.patient_profile)
+            
+        elif user.role == UserRole.DOCTOR and user.doctor_profile:
+            d_id = user.doctor_profile.id
+            LabResult.query.filter_by(doctor_id=d_id).delete()
+            
+            # For appointments, deleting a doctor means appointments need to be deleted
+            apps = Appointment.query.filter_by(doctor_id=d_id).all()
+            for a in apps:
+                Reminder.query.filter_by(appointment_id=a.id).delete()
+            Appointment.query.filter_by(doctor_id=d_id).delete()
+            
+            DoctorAvailability.query.filter_by(doctor_id=d_id).delete()
+            db.session.delete(user.doctor_profile)
+            
+        elif user.role == UserRole.ADMIN and user.admin_profile:
+            db.session.delete(user.admin_profile)
+            
+        db.session.delete(user)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        import traceback
+        traceback.print_exc()
+        return jsonify({"msg": "Failed to delete account due to constraints"}), 500
+    
+    return jsonify({"msg": "Account deleted successfully"}), 200

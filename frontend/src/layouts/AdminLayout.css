@@ -280,3 +280,33 @@
     padding: var(--space-5) var(--space-4);
   }
 }
+
+/* Dark mode */
+[data-theme="dark"] .admin-layout {
+  background: var(--color-bg);
+}
+
+[data-theme="dark"] .admin-sidebar {
+  background: #0b0d14;
+  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .admin-topbar {
+  background: var(--color-surface);
+  border-bottom-color: var(--color-border-light);
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .admin-topbar-title {
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .admin-topbar-user {
+  background: var(--color-surface-soft);
+  border-color: var(--color-border);
+}
+
+[data-theme="dark"] .admin-topbar-user-email {
+  color: var(--color-text);
+}
+

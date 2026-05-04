@@ -14,5 +14,12 @@ export default defineConfig({
     ],
     host: '0.0.0.0',  // listen on all interfaces inside Docker
     port: 5173,
+    proxy: {
+      '/api': {
+        target: 'http://backend:5001',
+        changeOrigin: true,
+        secure: false,
+      }
+    }
   }
 })

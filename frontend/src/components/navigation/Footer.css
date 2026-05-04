@@ -77,3 +77,13 @@
     gap: var(--space-8);
   }
 }
+
+/* Dark mode footer */
+[data-theme="dark"] .footer {
+  background: #0b0d14;
+}
+
+[data-theme="dark"] .footer-bottom {
+  border-top-color: rgba(255, 255, 255, 0.06);
+}
+

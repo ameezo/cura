@@ -127,3 +127,64 @@
   --container-xl: 1200px;
   --container-2xl: 1400px;
 }
+
+/* ============================================
+   CURA — Dark Mode Overrides
+   Deep midnight-blue palette
+   ============================================ */
+
+[data-theme="dark"] {
+  /* ---- Background & Surface ---- */
+  --color-bg: #0f1117;
+  --color-surface: #181b25;
+  --color-surface-soft: #1e2233;
+  --color-surface-hover: #252a3a;
+
+  /* ---- Brand (slightly lifted for dark bg) ---- */
+  --color-primary: #7ab8ff;
+  --color-primary-hover: #5ea3f7;
+  --color-primary-active: #4a94f0;
+  --color-primary-light: rgba(122, 184, 255, 0.14);
+  --color-primary-lighter: rgba(122, 184, 255, 0.07);
+
+  --color-secondary: #a4b3ff;
+  --color-secondary-hover: #8e9ff8;
+  --color-secondary-soft: rgba(164, 179, 255, 0.1);
+  --color-secondary-light: rgba(164, 179, 255, 0.12);
+
+  /* ---- Text ---- */
+  --color-text: #e4e8f1;
+  --color-text-secondary: #b0b8cc;
+  --color-text-muted: #7e889e;
+  --color-text-light: #5a6380;
+  --color-text-inverse: #0f1117;
+
+  /* ---- Borders ---- */
+  --color-border: #2a3048;
+  --color-border-light: #222738;
+  --color-border-focus: var(--color-primary);
+
+  /* ---- Semantic ---- */
+  --color-success: #5ec49a;
+  --color-success-bg: rgba(94, 196, 154, 0.1);
+  --color-success-border: rgba(94, 196, 154, 0.25);
+  --color-warning: #f4c06e;
+  --color-warning-bg: rgba(244, 192, 110, 0.1);
+  --color-warning-border: rgba(244, 192, 110, 0.25);
+  --color-danger: #f07080;
+  --color-danger-bg: rgba(240, 112, 128, 0.1);
+  --color-danger-border: rgba(240, 112, 128, 0.25);
+  --color-info: var(--color-primary);
+  --color-info-bg: var(--color-primary-light);
+
+  /* ---- Shadows (glow-style for dark mode) ---- */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 12px 30px rgba(0, 0, 0, 0.4);
+  --shadow-xl: 0 20px 50px rgba(0, 0, 0, 0.5);
+  --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.25);
+  --shadow-card-hover: 0 8px 30px rgba(122, 184, 255, 0.08);
+  --shadow-button: 0 4px 14px rgba(122, 184, 255, 0.2);
+  --shadow-nav: 0 1px 8px rgba(0, 0, 0, 0.35);
+}

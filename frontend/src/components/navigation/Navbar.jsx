@@ -4,12 +4,14 @@ import CuraLogo from '../CuraLogo';
 import Button from '../ui/Button';
 import { NAV_LINKS, ROUTES } from '../../utils/routePaths';
 import { useAuth } from '../../hooks/useAuth';
+import { useTheme } from '../../hooks/useTheme';
 import './Navbar.css';
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { isDark, toggleTheme } = useTheme();
 
   return (
     <nav className="navbar" id="main-navbar">
@@ -33,6 +35,16 @@ export default function Navbar() {
         </div>
 
         <div className="navbar-actions hide-mobile">
+          <button
+            className="navbar-theme-toggle"
+            onClick={toggleTheme}
+            title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+            aria-label="Toggle theme"
+          >
+            <span className="material-symbols-rounded">
+              {isDark ? 'light_mode' : 'dark_mode'}
+            </span>
+          </button>
           {user ? (
             <>
               <Link to={ROUTES.DASHBOARD}>
