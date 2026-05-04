@@ -35,6 +35,9 @@ import SettingsPage from '../pages/SettingsPage';
 import NotFoundPage from '../pages/NotFoundPage';
 import UnauthorizedPage from '../pages/UnauthorizedPage';
 
+// Admin
+import AdminPage from '../pages/AdminPage';
+
 const router = createBrowserRouter([
   // Public routes
   {
@@ -78,6 +81,7 @@ const router = createBrowserRouter([
       { path: '/app/notifications', element: <NotificationsPage /> },
       { path: '/app/emergency', element: <EmergencySupportPage /> },
       { path: '/app/settings', element: <SettingsPage /> },
+      { path: '/admin/doctors', element: <AdminPage /> },
     ],
   },
 ]);

@@ -1,0 +1,55 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# DEVELOPMENT docker-compose — Hot reload, exposed ports, dev servers
+# Usage: docker compose -f docker-compose.dev.yml up
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  frontend:
+    build:
+      context: ./frontend
+      target: builder          # Use Stage 1 only (Vite dev server, NOT nginx)
+    container_name: cura-frontend-dev
+    ports:
+      - "5173:5173"            # Exposed so browser can reach it directly
+    volumes:
+      - ./frontend:/app        # Live code sync → hot module reload
+      - /app/node_modules      # Keep container's node_modules separate
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+
+  backend:
+    build: ./backend
+    container_name: cura-backend-dev
+    ports:
+      - "5001:5001"            # Exposed for direct API testing (curl, Postman)
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=SuperSecretPass
+      - POSTGRES_DB=medical_app
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - SECRET_KEY=development-secret-key-123
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+      - FRONTEND_URL=http://localhost:5173
+    volumes:
+      - ./backend:/app         # Live code sync → Flask auto-reloads on save
+    depends_on:
+      - db
+
+  db:
+    image: postgres:16
+    container_name: cura-db-dev
+    ports:
+      - "5432:5432"            # Exposed for direct DB inspection (TablePlus, DBeaver)
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=SuperSecretPass
+      - POSTGRES_DB=medical_app
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+
+volumes:
+  postgres_data_dev:           # Separate volume — dev data never touches prod data
