@@ -13,7 +13,13 @@ def create_app():
 
     # Allow the public Cloudflare frontend URL + localhost for local dev
     frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:5173")
-    allowed_origins = [frontend_url, "http://localhost:5173", "http://127.0.0.1:5173"]
+    allowed_origins = [
+        frontend_url,
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "https://ameezozdomain.cfd",       # production single-hostname
+        "https://www.ameezozdomain.cfd",   # in case www is used
+    ]
     CORS(app, origins=allowed_origins, supports_credentials=True)
     
     # Configure Database
