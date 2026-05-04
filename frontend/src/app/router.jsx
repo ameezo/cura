@@ -17,6 +17,7 @@ import EmergencyHelpPage from '../pages/EmergencyHelpPage';
 // Auth Pages
 import LoginPage from '../pages/LoginPage';
 import RegisterPage from '../pages/RegisterPage';
+import PendingApprovalPage from '../pages/PendingApprovalPage';
 
 // Onboarding Pages
 import ProfileOnboardingPage from '../pages/onboarding/ProfileOnboardingPage';
@@ -63,6 +64,12 @@ const router = createBrowserRouter([
       { path: '/login', element: <LoginPage /> },
       { path: '/register', element: <RegisterPage /> },
     ],
+  },
+
+  // ── Doctor pending approval (standalone, auto-logs out) ──
+  {
+    path: '/pending-approval',
+    element: <PendingApprovalPage />,
   },
 
   // ── Onboarding routes (authenticated, no profile yet) ──

@@ -76,7 +76,12 @@ export default function ProfileOnboardingPage() {
         updateUser({ ...user, has_profile: true });
       }
 
-      navigate(ROUTES.DASHBOARD);
+      // Doctors need admin approval — send to pending page
+      if (isDoctor) {
+        navigate(ROUTES.PENDING_APPROVAL);
+      } else {
+        navigate(ROUTES.DASHBOARD);
+      }
     } catch (err) {
       setError(err.message || 'Failed to create profile');
     } finally {

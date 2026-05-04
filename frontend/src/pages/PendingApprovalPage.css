@@ -1,0 +1,235 @@
+/* ============================================
+   Pending Approval Page
+   Beautiful waiting screen for unverified doctors
+   ============================================ */
+
+.pending-approval-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── Background Shapes ── */
+.pending-bg-shapes {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.pending-shape {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.15;
+  animation: pendingFloat 20s ease-in-out infinite;
+}
+
+.pending-shape-1 {
+  width: 400px;
+  height: 400px;
+  background: linear-gradient(135deg, #69AAFA, #93A3FA);
+  top: -100px;
+  right: -100px;
+}
+
+.pending-shape-2 {
+  width: 300px;
+  height: 300px;
+  background: linear-gradient(135deg, #facc15, #f59e0b);
+  bottom: -60px;
+  left: -60px;
+  animation-delay: -7s;
+}
+
+.pending-shape-3 {
+  width: 200px;
+  height: 200px;
+  background: linear-gradient(135deg, #52c41a, #73d13d);
+  top: 50%;
+  left: 50%;
+  animation-delay: -14s;
+}
+
+@keyframes pendingFloat {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -20px) scale(1.05); }
+  66% { transform: translate(-20px, 15px) scale(0.95); }
+}
+
+/* ── Card Container ── */
+.pending-card {
+  position: relative;
+  z-index: 1;
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+  padding: var(--space-10, 3rem) var(--space-8) !important;
+  border-radius: var(--radius-xl) !important;
+  box-shadow: var(--shadow-xl) !important;
+  border: 1px solid var(--color-border-light) !important;
+  animation: pendingCardIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes pendingCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ── Icon Animation ── */
+.pending-icon-wrapper {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(250, 204, 21, 0.12), rgba(245, 158, 11, 0.12));
+  border: 2px solid rgba(250, 204, 21, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto var(--space-6);
+  animation: pendingPulse 2.5s ease-in-out infinite;
+}
+
+.pending-icon-wrapper .material-symbols-rounded {
+  font-size: 40px;
+  color: #f59e0b;
+  animation: pendingIconSpin 8s linear infinite;
+}
+
+@keyframes pendingPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.15);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 16px rgba(250, 204, 21, 0);
+    transform: scale(1.04);
+  }
+}
+
+@keyframes pendingIconSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ── Content ── */
+.pending-title {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  margin-bottom: var(--space-2);
+  color: var(--color-text-primary);
+}
+
+.pending-subtitle {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  line-height: 1.6;
+  margin: 0 0 var(--space-6);
+  max-width: 360px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ── Steps Summary ── */
+.pending-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+  text-align: left;
+}
+
+.pending-step {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+}
+
+.pending-step--done {
+  background: rgba(82, 196, 26, 0.08);
+  border: 1px solid rgba(82, 196, 26, 0.2);
+  color: var(--color-text-primary);
+}
+
+.pending-step--done .material-symbols-rounded {
+  color: #52c41a;
+  font-size: 20px;
+}
+
+.pending-step--current {
+  background: linear-gradient(135deg, rgba(250, 204, 21, 0.08), rgba(245, 158, 11, 0.08));
+  border: 1px solid rgba(250, 204, 21, 0.25);
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+
+.pending-step--current .material-symbols-rounded {
+  color: #f59e0b;
+  font-size: 20px;
+  animation: pendingStepPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pendingStepPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ── Countdown ── */
+.pending-countdown {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface-alt, rgba(255,255,255,0.04));
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.pending-countdown .material-symbols-rounded {
+  font-size: 18px;
+  color: var(--color-primary);
+}
+
+.pending-countdown-number {
+  font-weight: 700;
+  color: var(--color-primary);
+  font-variant-numeric: tabular-nums;
+  min-width: 1.5ch;
+  text-align: center;
+}
+
+/* ── Button area ── */
+.pending-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+/* ── Logo in top area ── */
+.pending-logo {
+  margin-bottom: var(--space-8);
+}
+
+@media (max-width: 480px) {
+  .pending-card {
+    padding: var(--space-8) var(--space-5) !important;
+  }
+}

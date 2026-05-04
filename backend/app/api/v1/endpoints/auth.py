@@ -117,7 +117,7 @@ def anonymous_guest():
     }), 200
 
 @auth_bp.route("/me", methods=["GET"])
-@require_role(["guest", "patient", "doctor", "admin"])
+@require_role(["guest", "patient", "doctor", "admin"], allow_unverified=True)
 def get_me():
     user_id = int(g.current_user["sub"])
     user = User.query.get(user_id)

@@ -23,6 +23,9 @@ def list_doctors():
                 if d.doctor_profile else None
             ),
             "specialty": d.doctor_profile.specialization if d.doctor_profile else None,
+            "clinic_location": d.doctor_profile.clinic_location if d.doctor_profile else None,
+            "contact_phone": d.doctor_profile.contact_phone if d.doctor_profile else None,
+            "registered_at": d.doctor_profile.created_at.isoformat() if d.doctor_profile and d.doctor_profile.created_at else None,
         }
         for d in doctors
     ]), 200

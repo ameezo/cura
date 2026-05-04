@@ -143,6 +143,7 @@ export default function AdminPage() {
                   <th>Email</th>
                   <th>Name</th>
                   <th>Specialty</th>
+                  <th>Details</th>
                   <th>Profile</th>
                   <th>Action</th>
                 </tr>
@@ -154,6 +155,17 @@ export default function AdminPage() {
                     <td>{doc.email}</td>
                     <td>{doc.profile_name || <span className="admin-no-data">—</span>}</td>
                     <td>{doc.specialty  || <span className="admin-no-data">—</span>}</td>
+                    <td>
+                      {doc.has_profile ? (
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', lineHeight: '1.6' }}>
+                          {doc.clinic_location && <div>📍 {doc.clinic_location}</div>}
+                          {doc.contact_phone && <div>📞 {doc.contact_phone}</div>}
+                          {doc.registered_at && <div>📅 {new Date(doc.registered_at).toLocaleDateString()}</div>}
+                        </div>
+                      ) : (
+                        <span className="admin-no-data">—</span>
+                      )}
+                    </td>
                     <td>
                       <span className={`admin-badge ${doc.has_profile ? 'admin-badge--verified' : 'admin-badge--pending'}`}>
                         {doc.has_profile ? 'Complete' : 'Missing'}
@@ -202,6 +214,7 @@ export default function AdminPage() {
                   <th>Email</th>
                   <th>Name</th>
                   <th>Specialty</th>
+                  <th>Details</th>
                   <th>Status</th>
                   <th>Action</th>
                 </tr>
@@ -213,6 +226,16 @@ export default function AdminPage() {
                     <td>{doc.email}</td>
                     <td>{doc.profile_name || <span className="admin-no-data">—</span>}</td>
                     <td>{doc.specialty  || <span className="admin-no-data">—</span>}</td>
+                    <td>
+                      {doc.has_profile ? (
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', lineHeight: '1.6' }}>
+                          {doc.clinic_location && <div>📍 {doc.clinic_location}</div>}
+                          {doc.contact_phone && <div>📞 {doc.contact_phone}</div>}
+                        </div>
+                      ) : (
+                        <span className="admin-no-data">—</span>
+                      )}
+                    </td>
                     <td>
                       <span className="admin-badge admin-badge--verified">✓ Verified</span>
                     </td>

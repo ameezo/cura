@@ -7,7 +7,7 @@ from pydantic import ValidationError
 doctors_bp = Blueprint("doctors", __name__)
 
 @doctors_bp.route("/", methods=["POST"])
-@require_role(["doctor", "admin"]) # Must be an admin or the doctor themselves building their profile
+@require_role(["doctor", "admin"], allow_unverified=True)  # Unverified doctors must be able to create their profile during onboarding
 def create_doctor():
     payload = request.json.copy() if request.json else {}
     current_user = g.current_user
@@ -28,7 +28,7 @@ def create_doctor():
     return jsonify(DoctorResponse.model_validate(doctor).model_dump(mode="json")), 201
 
 @doctors_bp.route("/<int:doctor_id>", methods=["GET"])
-@require_role(["guest", "patient", "doctor", "admin"]) # Everyone can view doctor profiles to book
+@require_role(["guest", "patient", "doctor", "admin"], allow_unverified=True)  # Unverified doctors need to view their own profile
 def get_doctor(doctor_id):
     doctor = doctor_service.get_doctor_by_id(doctor_id)
     if not doctor:
@@ -44,7 +44,7 @@ def list_doctors():
     return jsonify([DoctorResponse.model_validate(d).model_dump(mode="json") for d in doctors]), 200
 
 @doctors_bp.route("/<int:doctor_id>", methods=["PUT"])
-@require_role(["doctor", "admin"])
+@require_role(["doctor", "admin"], allow_unverified=True)  # Unverified doctors can still edit their pending profile
 def update_doctor(doctor_id):
     doctor = doctor_service.get_doctor_by_id(doctor_id)
     if not doctor:

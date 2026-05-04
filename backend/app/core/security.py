@@ -18,7 +18,17 @@ def decode_access_token(token: str) -> Optional[Dict[str, Any]]:
     except jwt.PyJWTError:
         return None
 
-def require_role(roles: List[str]):
+def require_role(roles: List[str], allow_unverified: bool = False):
+    """
+    Decorator that enforces JWT authentication and role-based access.
+
+    Args:
+        roles: List of role strings that are permitted to access the endpoint.
+        allow_unverified: If True, skip the doctor verification check.
+                          Use this for endpoints that unverified doctors must
+                          access (e.g., profile creation during onboarding,
+                          /auth/me).
+    """
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
@@ -36,7 +46,7 @@ def require_role(roles: List[str]):
             if user_role not in roles:
                 return jsonify({"msg": "Insufficient permissions"}), 403
                 
-            if user_role == "doctor" and not token_data.get("ver", False):
+            if user_role == "doctor" and not allow_unverified and not token_data.get("ver", False):
                 return jsonify({"msg": "Doctor account pending admin verification"}), 403
                 
             g.current_user = token_data

@@ -59,10 +59,10 @@ export const mockNotifications = [
 
 export const mockEmergencyContacts = [
   { id: 'ec_001', name: 'Emergency Services', phone: '911', type: 'emergency', description: 'National emergency number' },
-  { id: 'ec_002', name: 'Poison Control', phone: '1-800-222-1222', type: 'emergency', description: 'Poison emergency hotline' },
-  { id: 'ec_003', name: 'Dr. Sarah Ali', phone: '+1 555-0301', type: 'doctor', description: 'Primary cardiologist' },
-  { id: 'ec_004', name: 'City General Hospital', phone: '+1 555-0400', type: 'hospital', description: 'Nearest hospital — 2.3 miles' },
-  { id: 'ec_005', name: 'Michael Johnson', phone: '+1 555-0199', type: 'personal', description: 'Husband — Emergency contact' },
+  { id: 'ec_002', name: 'Poison Control', phone: '+962 123-456-789', type: 'emergency', description: 'Poison emergency hotline' },
+  { id: 'ec_003', name: 'Dr. Ameen Al-Banna', phone: '+962 798-913-579', type: 'doctor', description: 'Primary cardiologist' },
+  { id: 'ec_004', name: 'City General Hospital', phone: '+962 789-456-123', type: 'hospital', description: 'Nearest hospital — 2.3 miles' },
+  { id: 'ec_005', name: 'Dr. Hani Shawirma', phone: '+962 123-789-456', type: 'personal', description: 'Husband — Emergency contact' },
 ];
 
 export const mockChatMessages = [

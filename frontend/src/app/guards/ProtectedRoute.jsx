@@ -19,6 +19,15 @@ export default function ProtectedRoute({ children, requireProfile = false }) {
     return <Navigate to={ROUTES.LOGIN} replace />;
   }
 
+  // Unverified doctors cannot access the app — redirect to pending approval
+  if (user?.role === 'doctor' && user?.is_verified === false) {
+    if (user?.has_profile) {
+      return <Navigate to={ROUTES.PENDING_APPROVAL} replace />;
+    }
+    // If they haven't completed onboarding yet, let them through to onboarding
+    // (ProtectedRoute wraps onboarding too, so don't block it)
+  }
+
   // Admins have no patient/doctor profile — skip onboarding redirect for them
   const isAdmin = user?.role === 'admin';
   if (requireProfile && user && user.has_profile === false && !isAdmin) {

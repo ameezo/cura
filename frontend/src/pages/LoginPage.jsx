@@ -27,6 +27,13 @@ export default function LoginPage() {
       // Admins go straight to the admin panel — they have no patient/doctor profile
       if (userData.role === 'admin') {
         navigate(ROUTES.ADMIN_PANEL);
+      } else if (userData.role === 'doctor' && !userData.is_verified) {
+        // Unverified doctor — send to pending page or onboarding
+        if (userData.has_profile) {
+          navigate(ROUTES.PENDING_APPROVAL);
+        } else {
+          navigate(ROUTES.ONBOARDING_PROFILE);
+        }
       } else if (userData.has_profile) {
         navigate(ROUTES.DASHBOARD);
       } else {

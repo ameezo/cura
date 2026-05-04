@@ -14,6 +14,7 @@ export const ROUTES = {
 
   // Onboarding
   ONBOARDING_PROFILE: '/onboarding/profile',
+  PENDING_APPROVAL: '/pending-approval',
 
   // App (Protected)
   DASHBOARD: '/app/dashboard',

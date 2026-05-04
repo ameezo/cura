@@ -22,7 +22,7 @@ import './SettingsPage.css';
  * to query and the backend resolves ownership.
  */
 export default function SettingsPage() {
-  const { user } = useAuth();
+  const { user, fetchMe } = useAuth();
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -47,15 +47,34 @@ export default function SettingsPage() {
   });
 
   const [profileId, setProfileId] = useState(null);
+  const [noProfile, setNoProfile] = useState(false);
   const isDoctor = user?.role === 'doctor';
 
   useEffect(() => {
     async function loadProfile() {
       setLoading(true);
       setError(null);
+      setNoProfile(false);
+
       try {
-        if (isDoctor) {
-          const data = await getDoctorById(user?.profile_id || user?.id);
+        // Refresh auth state to get latest profile_id
+        let currentUser = user;
+        if (fetchMe) {
+          const freshUser = await fetchMe();
+          if (freshUser) currentUser = freshUser;
+        }
+
+        // If the user hasn't completed their profile yet, don't fetch
+        if (!currentUser?.has_profile) {
+          setNoProfile(true);
+          setLoading(false);
+          return;
+        }
+
+        const id = currentUser.profile_id || currentUser.id;
+
+        if (currentUser.role === 'doctor') {
+          const data = await getDoctorById(id);
           setProfileId(data.id);
           setDoctorForm({
             full_name: data.full_name || '',
@@ -64,7 +83,7 @@ export default function SettingsPage() {
             contact_phone: data.contact_phone || '',
           });
         } else {
-          const data = await getPatientById(user?.profile_id || user?.id);
+          const data = await getPatientById(id);
           setProfileId(data.id);
           setPatientForm({
             first_name: data.first_name || '',
@@ -76,7 +95,7 @@ export default function SettingsPage() {
           });
         }
       } catch (err) {
-        setError('Could not load profile. Please try again.');
+        setError('Could not load profile. Please try again later.');
       } finally {
         setLoading(false);
       }
@@ -85,7 +104,7 @@ export default function SettingsPage() {
     if (user?.id) {
       loadProfile();
     }
-  }, [user?.id, isDoctor]);
+  }, [user?.id]);
 
   const handlePatientChange = (e) =>
     setPatientForm({ ...patientForm, [e.target.name]: e.target.value });
@@ -147,6 +166,19 @@ export default function SettingsPage() {
             <div style={{ padding: 'var(--space-8) 0', textAlign: 'center', color: 'var(--color-text-muted)' }}>
               Loading profile...
             </div>
+          ) : noProfile ? (
+            <div style={{ padding: 'var(--space-6)', textAlign: 'center' }}>
+              <span className="material-symbols-rounded" style={{ fontSize: '48px', color: 'var(--color-primary)', marginBottom: 'var(--space-3)', display: 'block' }}>person_add</span>
+              <p style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--weight-medium)', marginBottom: 'var(--space-2)' }}>
+                Profile not set up yet
+              </p>
+              <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', marginBottom: 'var(--space-5)' }}>
+                Complete your profile to unlock all features and personalize your experience.
+              </p>
+              <Button variant="primary" icon="arrow_forward" onClick={() => window.location.href = '/onboarding/profile'}>
+                Complete Profile
+              </Button>
+            </div>
           ) : isDoctor ? (
             <div className="settings-fields">
               <Input label="Full Name" name="full_name" value={doctorForm.full_name} onChange={handleDoctorChange} icon="badge" />
@@ -164,7 +196,7 @@ export default function SettingsPage() {
             </div>
           )}
 
-          <Button variant="primary" icon="save" onClick={handleSave} loading={saving}>Save Changes</Button>
+          {!noProfile && !loading && <Button variant="primary" icon="save" onClick={handleSave} loading={saving}>Save Changes</Button>}
         </Card>
 
         {/* Preferences */}
