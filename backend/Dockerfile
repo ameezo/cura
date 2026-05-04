@@ -2,8 +2,12 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# System deps for psycopg2
-RUN apt-get update && apt-get install -y libpq-dev gcc && rm -rf /var/lib/apt/lists/*
+# System deps:
+#   libpq-dev + gcc → needed to compile psycopg2
+#   postgresql-client → provides pg_isready for the entrypoint health check
+RUN apt-get update && \
+    apt-get install -y libpq-dev gcc postgresql-client && \
+    rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
 # Install app deps + gunicorn (production WSGI server)
@@ -11,16 +15,13 @@ RUN pip install --no-cache-dir -r requirements.txt gunicorn
 
 COPY . .
 
+# Make the entrypoint executable
+RUN chmod +x /app/entrypoint.sh
+
 EXPOSE 5001
 
 ENV FLASK_APP=app.main
 ENV FLASK_ENV=production
 
-# Gunicorn: 2 workers, bind on all interfaces, 120s timeout for slow queries
-CMD ["gunicorn", \
-     "--bind", "0.0.0.0:5001", \
-     "--workers", "2", \
-     "--timeout", "120", \
-     "--access-logfile", "-", \
-     "--error-logfile", "-", \
-     "app.main:create_app()"]
+# entrypoint.sh: waits for DB → runs migrations → starts Gunicorn
+ENTRYPOINT ["/app/entrypoint.sh"]
