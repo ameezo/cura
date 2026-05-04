@@ -3,13 +3,18 @@ from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from app.core.config import settings
+import os
 
 db = SQLAlchemy()
 migrate = Migrate()
 
 def create_app():
     app = Flask(__name__)
-    CORS(app)
+
+    # Allow the public Cloudflare frontend URL + localhost for local dev
+    frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:5173")
+    allowed_origins = [frontend_url, "http://localhost:5173", "http://127.0.0.1:5173"]
+    CORS(app, origins=allowed_origins, supports_credentials=True)
     
     # Configure Database
     app.config["SQLALCHEMY_DATABASE_URI"] = settings.SQLALCHEMY_DATABASE_URI

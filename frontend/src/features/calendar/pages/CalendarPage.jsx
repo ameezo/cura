@@ -4,8 +4,9 @@ import Card from '../../../components/ui/Card';
 import Badge from '../../../components/ui/Badge';
 import { getAppointments } from '../../../api/bookingsApi';
 import { getDoctors } from '../../../api/doctorsApi';
-import { getAvailability } from '../../../api/bookingsApi';
-import { mapAppointment, formatTime } from '../../../api/mappers';
+import { getAllPatients } from '../../../api/patientsApi';
+import { formatTime } from '../../../api/mappers';
+import { useAuth } from '../../../hooks/useAuth';
 import './CalendarPage.css';
 
 /**
@@ -22,6 +23,9 @@ const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 export default function CalendarPage() {
+  const { user } = useAuth();
+  const isDoctor = user?.role === 'doctor';
+
   const [currentDate, setCurrentDate] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -37,24 +41,30 @@ export default function CalendarPage() {
         if (!rawApts.length) { setEvents([]); return; }
 
         let doctorMap = {};
-        let slotMap = {};
+        let patientMap = {};
         try {
           const doctors = await getDoctors();
           doctorMap = Object.fromEntries(doctors.map(d => [d.id, d]));
-        } catch {}
-        try {
-          const slots = await getAvailability();
-          slotMap = Object.fromEntries(slots.map(s => [s.id, s]));
+          
+          if (isDoctor) {
+            const patients = await getAllPatients();
+            patientMap = Object.fromEntries(patients.map(p => [p.id, p]));
+          }
         } catch {}
 
         const calEvents = rawApts
           .filter(apt => apt.status !== 'cancelled')
           .map(apt => {
             const doctor = doctorMap[apt.doctor_id] || {};
-            const slot = slotMap[apt.availability_id] || {};
+            const patient = patientMap[apt.patient_id] || {};
+            const slot = apt.slot || {};
+            
+            const doctorName = doctor.full_name || `Doctor #${apt.doctor_id}`;
+            const patientName = patient.first_name ? `${patient.first_name} ${patient.last_name}` : `Patient #${apt.patient_id}`;
+            
             return {
               id: apt.id,
-              title: doctor.full_name || `Appointment #${apt.id}`,
+              title: isDoctor ? patientName : doctorName,
               date: slot.date || null,
               time: slot.start_time ? formatTime(slot.start_time) : 'TBD',
               type: 'appointment',

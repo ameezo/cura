@@ -50,25 +50,26 @@ export function mapAvailabilitySlot(slot) {
 
 /**
  * Map a backend AppointmentResponse to the shape the frontend AppointmentsPage expects.
- * The backend does NOT include doctor_name, specialty, date, or time —
- * those come from joining with doctors and availability data.
  *
  * @param {Object} appointment - Backend appointment response
  * @param {Object} [doctorMap] - Map of doctor_id → doctor data (from GET /doctors/)
- * @param {Object} [slotMap] - Map of availability_id → slot data
+ * @param {Object} [patientMap] - Map of patient_id → patient data (from GET /patients/)
  */
-export function mapAppointment(appointment, doctorMap = {}, slotMap = {}) {
+export function mapAppointment(appointment, doctorMap = {}, patientMap = {}) {
   const doctor = doctorMap[appointment.doctor_id] || {};
-  const slot = slotMap[appointment.availability_id] || {};
+  const patient = patientMap[appointment.patient_id] || {};
+  const slot = appointment.slot || {};
 
   return {
     id: appointment.id,
     patientId: appointment.patient_id,
     doctorId: appointment.doctor_id,
     availabilityId: appointment.availability_id,
-    // Enriched fields from doctor + availability join
+    // Enriched fields from doctor + patient joins
     doctor_name: doctor.full_name || `Doctor #${appointment.doctor_id}`,
     specialty: doctor.specialization || 'Unknown',
+    patient_name: patient.first_name ? `${patient.first_name} ${patient.last_name}` : `Patient #${appointment.patient_id}`,
+    // Directly from nested backend payload
     date: slot.date || 'TBD',
     time: slot.start_time ? formatTime(slot.start_time) : 'TBD',
     // Direct fields

@@ -5,8 +5,14 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
+    // Hosts allowed to access the Vite dev server (used only in development)
     allowedHosts: [
-      'ameezozdomain.cfd'
-    ]
+      'ameezozdomain.cfd',
+      'app.ameezozdomain.cfd',
+      'api.ameezozdomain.cfd',
+      '.ameezozdomain.cfd',  // wildcard for all subdomains
+    ],
+    host: '0.0.0.0',  // listen on all interfaces inside Docker
+    port: 5173,
   }
 })

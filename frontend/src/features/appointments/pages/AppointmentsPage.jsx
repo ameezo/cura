@@ -8,13 +8,17 @@ import Tabs from '../../../components/ui/Tabs';
 import EmptyState from '../../../components/ui/EmptyState';
 import { getAppointments, cancelAppointment } from '../../../api/bookingsApi';
 import { getDoctors } from '../../../api/doctorsApi';
-import { getAvailability } from '../../../api/bookingsApi';
+import { getAllPatients } from '../../../api/patientsApi';
 import { mapAppointment } from '../../../api/mappers';
+import { useAuth } from '../../../hooks/useAuth';
 import './AppointmentsPage.css';
 
 const STATUS_MAP = { confirmed: 'success', pending: 'warning', cancelled: 'danger', completed: 'default', missed: 'danger' };
 
 export default function AppointmentsPage() {
+  const { user } = useAuth();
+  const isDoctor = user?.role === 'doctor';
+
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -32,27 +36,24 @@ export default function AppointmentsPage() {
         return;
       }
 
-      // 2. Fetch all doctors for enrichment
+      // 2. Fetch all doctors (and patients if doctor) for enrichment
       let doctorMap = {};
+      let patientMap = {};
       try {
         const doctors = await getDoctors();
         doctorMap = Object.fromEntries(doctors.map(d => [d.id, d]));
+        
+        if (isDoctor) {
+          const patients = await getAllPatients();
+          patientMap = Object.fromEntries(patients.map(p => [p.id, p]));
+        }
       } catch {
-        // Non-critical: continue without doctor names
+        // Non-critical: continue without names
       }
 
-      // 3. Fetch availability slots for enrichment (date + time)
-      let slotMap = {};
-      try {
-        const slots = await getAvailability();
-        slotMap = Object.fromEntries(slots.map(s => [s.id, s]));
-      } catch {
-        // Non-critical: continue without slot times
-      }
-
-      // 4. Map appointments to display-friendly shape
+      // 3. Map appointments to display-friendly shape
       const enriched = rawAppointments.map(apt =>
-        mapAppointment(apt, doctorMap, slotMap)
+        mapAppointment(apt, doctorMap, patientMap)
       );
 
       setAppointments(enriched);
@@ -86,8 +87,8 @@ export default function AppointmentsPage() {
       <div className="appointments-page">
         <PageHeader
           title="Appointments"
-          subtitle="Manage your doctor visits"
-          actions={<Link to="/reservation"><Button variant="primary" icon="add">Book New</Button></Link>}
+          subtitle={isDoctor ? "Manage your patient visits" : "Manage your doctor visits"}
+          actions={<Link to="/reservation"><Button variant="primary" icon="add">{isDoctor ? 'Open Session' : 'Book New'}</Button></Link>}
         />
         <div className="apt-loading">
           <div className="apt-loading-spinner" />
@@ -102,8 +103,8 @@ export default function AppointmentsPage() {
       <div className="appointments-page">
         <PageHeader
           title="Appointments"
-          subtitle="Manage your doctor visits"
-          actions={<Link to="/reservation"><Button variant="primary" icon="add">Book New</Button></Link>}
+          subtitle={isDoctor ? "Manage your patient visits" : "Manage your doctor visits"}
+          actions={<Link to="/reservation"><Button variant="primary" icon="add">{isDoctor ? 'Open Session' : 'Book New'}</Button></Link>}
         />
         <Card className="apt-error-card">
           <div className="apt-error">
@@ -127,11 +128,11 @@ export default function AppointmentsPage() {
           <Card key={apt.id} hover className="apt-card">
             <div className="apt-card-row">
               <div className="apt-card-avatar">
-                <span className="material-symbols-rounded">person</span>
+                <span className="material-symbols-rounded">{isDoctor ? 'person' : 'stethoscope'}</span>
               </div>
               <div className="apt-card-info">
-                <strong>{apt.doctor_name}</strong>
-                <span>{apt.specialty}</span>
+                <strong>{isDoctor ? apt.patient_name : apt.doctor_name}</strong>
+                <span>{isDoctor ? 'Patient' : apt.specialty}</span>
                 <div className="apt-card-meta">
                   <span className="material-symbols-rounded">calendar_today</span> {apt.date}
                   <span className="material-symbols-rounded" style={{ marginLeft: '12px' }}>schedule</span> {apt.time}
@@ -170,8 +171,8 @@ export default function AppointmentsPage() {
     <div className="appointments-page">
       <PageHeader
         title="Appointments"
-        subtitle="Manage your doctor visits"
-        actions={<Link to="/reservation"><Button variant="primary" icon="add">Book New</Button></Link>}
+        subtitle={isDoctor ? "Manage your patient visits" : "Manage your doctor visits"}
+        actions={<Link to="/reservation"><Button variant="primary" icon="add">{isDoctor ? 'Open Session' : 'Book New'}</Button></Link>}
       />
       <Tabs tabs={tabs} />
     </div>

@@ -1,45 +1,71 @@
 version: '3.8'
 
 services:
+
+  # ─── Frontend (React → Nginx production build) ───────────────────────────────
   frontend:
-    build: ./frontend
-    ports:
-      - "5173:5173"
-    volumes:
-      - ./frontend:/app           # Sync code changes → container
-      - /app/node_modules         # Prevent host node_modules from overwriting container's
-    environment:
-      - CHOKIDAR_USEPOLLING=true  # Ensures file watching works in Docker
+    build:
+      context: ./frontend
+      target: production
+      args:
+        # Baked into the JS bundle at build time by Vite
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+    container_name: cura-frontend
+    restart: unless-stopped
+    networks:
+      - cura-net
 
-
+  # ─── Backend (Flask + Gunicorn) ───────────────────────────────────────────────
   backend:
     build: ./backend
-    ports:
-      - "5001:5001"
+    container_name: cura-backend
+    restart: unless-stopped
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=SuperSecretPass
-      - POSTGRES_DB=medical_app
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_HOST=db
       - POSTGRES_PORT=5432
-      - SECRET_KEY=development-secret-key-123
-      - FLASK_ENV=development
-      - FLASK_DEBUG=1
-    volumes:
-      - ./backend:/app
+      - SECRET_KEY=${SECRET_KEY}
+      - FLASK_ENV=production
+      - FLASK_DEBUG=0
+      - FRONTEND_URL=${FRONTEND_URL}
     depends_on:
       - db
+    networks:
+      - cura-net
 
+  # ─── Database (Postgres — internal only, NOT exposed to host) ─────────────────
   db:
     image: postgres:16
+    container_name: cura-db
+    restart: unless-stopped
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=SuperSecretPass
-      - POSTGRES_DB=medical_app
-    ports:
-      - "5432:5432"
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - cura-net
+
+  # ─── Cloudflare Tunnel (outbound-only, no open ports on server) ───────────────
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cura-cloudflared
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    environment:
+      - TUNNEL_TRANSPORT_PROTOCOL=http2
+    restart: unless-stopped
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - cura-net
 
 volumes:
   postgres_data:
+
+networks:
+  cura-net:
+    driver: bridge

@@ -6,6 +6,7 @@ import Select from '../components/ui/Select';
 import Alert from '../components/ui/Alert';
 import { SPECIALTIES } from '../utils/constants';
 import { apiRequest } from '../api/client';
+import { useAuth } from '../hooks/useAuth';
 import './ReservationPage.css';
 
 const formatTimeCustom = (timeStr) => {
@@ -18,6 +19,14 @@ const formatTimeCustom = (timeStr) => {
 };
 
 export default function ReservationPage() {
+  const { user } = useAuth();
+  const isDoctor = user?.role === 'doctor';
+
+  // --- Doctor State ---
+  const [doctorForm, setDoctorForm] = useState({ date: '', start_time: '', end_time: '', slot_type: 'both' });
+  const [doctorSubmitted, setDoctorSubmitted] = useState(false);
+
+  // --- Patient State ---
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
     specialty: '', doctor: '', date: '', slot_id: '', time: '', booking_type: 'online', name: '', email: '', phone: '', notes: '',
@@ -79,7 +88,118 @@ export default function ReservationPage() {
     }
   };
 
+  const handleDoctorChange = (e) => setDoctorForm({ ...doctorForm, [e.target.name]: e.target.value });
+
+  const handleDoctorSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitError(null);
+    setIsSubmitting(true);
+    try {
+      await apiRequest('/bookings/availability', {
+        method: 'POST',
+        body: JSON.stringify(doctorForm)
+      });
+      setDoctorSubmitted(true);
+    } catch (err) {
+      setSubmitError(err.message || 'Failed to open session. Ensure times are correct and not overlapping.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const selectedDoctor = doctors.find((d) => d.id === form.doctor);
+
+  if (isDoctor) {
+    if (doctorSubmitted) {
+      return (
+        <div className="reservation-page">
+          <div className="container section">
+            <div className="reservation-success animate-scale-in">
+              <div className="success-icon">
+                <span className="material-symbols-rounded">check_circle</span>
+              </div>
+              <h2>Session Opened!</h2>
+              <p>Your availability slot has been created.</p>
+              <Card className="reservation-summary-card">
+                <div className="summary-row"><span>Date</span><strong>{doctorForm.date}</strong></div>
+                <div className="summary-row"><span>Time</span><strong>{formatTimeCustom(doctorForm.start_time)} - {formatTimeCustom(doctorForm.end_time)}</strong></div>
+                <div className="summary-row"><span>Type</span><strong>{doctorForm.slot_type}</strong></div>
+              </Card>
+              <Button variant="primary" icon="add" onClick={() => { 
+                setDoctorSubmitted(false); 
+                setDoctorForm({ date: '', start_time: '', end_time: '', slot_type: 'both' });
+              }}>
+                Open Another Session
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="reservation-page">
+        <section className="reservation-hero section">
+          <div className="container">
+            <div className="section-header">
+              <span className="section-badge">Availability</span>
+              <h1>Open New <span className="text-gradient">Session</span></h1>
+              <p>Define your available times for patients to book.</p>
+            </div>
+          </div>
+        </section>
+
+        <section className="reservation-form-section section-sm">
+          <div className="container">
+            <Card className="reservation-card" style={{ maxWidth: '600px', margin: '0 auto' }}>
+              <form onSubmit={handleDoctorSubmit}>
+                <div className="form-step animate-fade-in">
+                  <h3>Session Details</h3>
+                  
+                  <Input label="Date" type="date" name="date" value={doctorForm.date} onChange={handleDoctorChange} required icon="calendar_today" />
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1.5rem' }}>
+                    <Input label="Start Time" type="time" name="start_time" value={doctorForm.start_time} onChange={handleDoctorChange} required icon="schedule" />
+                    <Input label="End Time" type="time" name="end_time" value={doctorForm.end_time} onChange={handleDoctorChange} required icon="schedule" />
+                  </div>
+
+                  <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
+                    <label className="input-label">Session Type</label>
+                    <div style={{ display: 'flex', gap: '1rem' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                        <input type="radio" name="slot_type" value="online" checked={doctorForm.slot_type === 'online'} onChange={handleDoctorChange} />
+                        Online
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                        <input type="radio" name="slot_type" value="onsite" checked={doctorForm.slot_type === 'onsite'} onChange={handleDoctorChange} />
+                        On-site
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                        <input type="radio" name="slot_type" value="both" checked={doctorForm.slot_type === 'both'} onChange={handleDoctorChange} />
+                        Both
+                      </label>
+                    </div>
+                  </div>
+
+                  {submitError && (
+                    <Alert variant="error" style={{ marginBottom: '1rem' }}>
+                      {submitError}
+                    </Alert>
+                  )}
+
+                  <div className="form-actions" style={{ justifyContent: 'flex-end', marginTop: '2rem' }}>
+                    <Button variant="primary" type="submit" icon="add_circle" disabled={isSubmitting || !doctorForm.date || !doctorForm.start_time || !doctorForm.end_time}>
+                      {isSubmitting ? 'Opening...' : 'Open Session'}
+                    </Button>
+                  </div>
+                </div>
+              </form>
+            </Card>
+          </div>
+        </section>
+      </div>
+    );
+  }
 
   if (submitted) {
     return (

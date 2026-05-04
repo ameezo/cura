@@ -39,6 +39,7 @@ class AppointmentResponse(BaseModel):
     status: str
     notes: Optional[str] = None
     created_at: datetime
+    slot: Optional[AvailabilityResponse] = None
     
     class Config:
         from_attributes = True
