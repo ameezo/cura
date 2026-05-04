@@ -28,6 +28,9 @@ services:
       - FLASK_ENV=production
       - FLASK_DEBUG=0
       - FRONTEND_URL=${FRONTEND_URL}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
+      - AI_CHAT_ENABLED=${AI_CHAT_ENABLED:-true}
     depends_on:
       - db
     networks:

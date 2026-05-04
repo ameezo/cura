@@ -34,6 +34,9 @@ services:
       - FLASK_ENV=development
       - FLASK_DEBUG=1
       - FRONTEND_URL=http://localhost:5173
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
+      - AI_CHAT_ENABLED=${AI_CHAT_ENABLED:-true}
     volumes:
       - ./backend:/app         # Live code sync → Flask auto-reloads on save
     depends_on:
