@@ -1,5 +1,6 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request, g
 from app.models.user import User, UserRole
+from app.models.admin_profile import AdminProfile
 from app.core.security import require_role
 from app import db
 
@@ -18,10 +19,10 @@ def list_doctors():
             "is_verified": d.is_verified,
             "has_profile": d.doctor_profile is not None,
             "profile_name": (
-                f"{d.doctor_profile.first_name} {d.doctor_profile.last_name}"
+                d.doctor_profile.full_name
                 if d.doctor_profile else None
             ),
-            "specialty": d.doctor_profile.specialty if d.doctor_profile else None,
+            "specialty": d.doctor_profile.specialization if d.doctor_profile else None,
         }
         for d in doctors
     ]), 200
@@ -74,3 +75,76 @@ def revoke_doctor(user_id):
     db.session.commit()
 
     return jsonify({"msg": "Doctor verification revoked."}), 200
+
+
+# ── Admin Profile Endpoints ──────────────────────────────────────────────────
+
+
+@admin_bp.route("/profile", methods=["GET"])
+@require_role(["admin"])
+def get_admin_profile():
+    """Returns the current admin's profile info."""
+    user_id = int(g.current_user["sub"])
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+
+    profile = user.admin_profile
+    return jsonify({
+        "id": user.id,
+        "email": user.email,
+        "role": user.role.value,
+        "is_verified": user.is_verified,
+        "has_profile": profile is not None,
+        "profile": {
+            "full_name": profile.full_name,
+            "phone_number": profile.phone_number,
+            "department": profile.department,
+            "created_at": profile.created_at.isoformat() if profile.created_at else None,
+            "updated_at": profile.updated_at.isoformat() if profile.updated_at else None,
+        } if profile else None,
+    }), 200
+
+
+@admin_bp.route("/profile", methods=["PUT"])
+@require_role(["admin"])
+def update_admin_profile():
+    """Create or update the current admin's profile."""
+    user_id = int(g.current_user["sub"])
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+
+    data = request.json
+    full_name = data.get("full_name")
+    if not full_name:
+        return jsonify({"msg": "full_name is required"}), 400
+
+    profile = user.admin_profile
+    if profile is None:
+        # Create new profile
+        profile = AdminProfile(
+            user_id=user_id,
+            full_name=full_name,
+            phone_number=data.get("phone_number"),
+            department=data.get("department"),
+        )
+        db.session.add(profile)
+    else:
+        # Update existing profile
+        profile.full_name = full_name
+        if "phone_number" in data:
+            profile.phone_number = data["phone_number"]
+        if "department" in data:
+            profile.department = data["department"]
+
+    db.session.commit()
+
+    return jsonify({
+        "msg": "Admin profile saved successfully.",
+        "profile": {
+            "full_name": profile.full_name,
+            "phone_number": profile.phone_number,
+            "department": profile.department,
+        }
+    }), 200

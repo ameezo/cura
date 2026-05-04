@@ -34,6 +34,11 @@ def get_all_available_slots(target_date: Optional[date] = None) -> List[DoctorAv
         query = query.filter_by(date=target_date)
     return query.order_by(DoctorAvailability.date, DoctorAvailability.start_time).all()
 
+def get_doctor_all_slots(doctor_id: int) -> List[DoctorAvailability]:
+    """Return ALL slots for a doctor (booked + free) for their management dashboard."""
+    return DoctorAvailability.query.filter_by(doctor_id=doctor_id)\
+        .order_by(DoctorAvailability.date, DoctorAvailability.start_time).all()
+
 def get_slot_by_id(slot_id: int) -> Optional[DoctorAvailability]:
     return DoctorAvailability.query.get(slot_id)
 

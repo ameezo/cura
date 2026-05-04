@@ -27,6 +27,10 @@ export const ROUTES = {
   LAB_RESULTS: '/app/lab-results',
   EMERGENCY: '/app/emergency',
   SETTINGS: '/app/settings',
+
+  // Admin
+  ADMIN_PANEL: '/admin/doctors',
+  ADMIN_SETTINGS: '/admin/settings',
 };
 
 export const NAV_LINKS = [
@@ -48,3 +52,16 @@ export const SIDEBAR_LINKS = [
   { label: 'Emergency', path: ROUTES.EMERGENCY, icon: 'emergency' },
   { label: 'Settings', path: ROUTES.SETTINGS, icon: 'settings' },
 ];
+
+export const ADMIN_SIDEBAR_LINKS = [
+  { label: 'Doctor Management', path: ROUTES.ADMIN_PANEL, icon: 'stethoscope' },
+  { label: 'Settings', path: ROUTES.ADMIN_SETTINGS, icon: 'settings' },
+];
+
+// Maps a role string to a display label
+export const ROLE_LABELS = {
+  admin: 'Administrator',
+  doctor: 'Doctor',
+  patient: 'Patient',
+  guest: 'Guest',
+};

@@ -70,16 +70,24 @@ def login():
     
     has_profile = False
     profile_id = None
-    if user.role == UserRole.PATIENT:
+    name = None
+    if user.role == UserRole.ADMIN:
+        # Admins always skip onboarding, but may have a profile
+        has_profile = True
+        if user.admin_profile:
+            profile_id = user.admin_profile.id
+            name = user.admin_profile.full_name
+    elif user.role == UserRole.PATIENT:
         if user.patient_profile:
             has_profile = True
             profile_id = user.patient_profile.id
+            name = f"{user.patient_profile.first_name} {user.patient_profile.last_name}"
     elif user.role == UserRole.DOCTOR:
         if user.doctor_profile:
             has_profile = True
             profile_id = user.doctor_profile.id
+            name = user.doctor_profile.full_name
 
-    # we have to cancel this or something like that , once you login you actually dont have to see your credentials again
     return jsonify({
         "access_token": access_token,
         "token_type": "bearer",
@@ -89,7 +97,8 @@ def login():
             "role": user.role.value,
             "is_verified": user.is_verified,
             "has_profile": has_profile,
-            "profile_id": profile_id
+            "profile_id": profile_id,
+            "name": name,
         }
     }), 200
 
@@ -117,14 +126,22 @@ def get_me():
     
     has_profile = False
     profile_id = None
-    if user.role == UserRole.PATIENT:
+    name = None
+    if user.role == UserRole.ADMIN:
+        has_profile = True
+        if user.admin_profile:
+            profile_id = user.admin_profile.id
+            name = user.admin_profile.full_name
+    elif user.role == UserRole.PATIENT:
         if user.patient_profile:
             has_profile = True
             profile_id = user.patient_profile.id
+            name = f"{user.patient_profile.first_name} {user.patient_profile.last_name}"
     elif user.role == UserRole.DOCTOR:
         if user.doctor_profile:
             has_profile = True
             profile_id = user.doctor_profile.id
+            name = user.doctor_profile.full_name
     
     return jsonify({
         "id": user.id,
@@ -133,4 +150,5 @@ def get_me():
         "is_verified": user.is_verified,
         "has_profile": has_profile,
         "profile_id": profile_id,
+        "name": name,
     }), 200

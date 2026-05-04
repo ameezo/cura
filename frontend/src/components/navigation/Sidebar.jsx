@@ -1,13 +1,15 @@
 import { Link, useLocation } from 'react-router-dom';
 import CuraLogo from '../CuraLogo';
 import Avatar from '../ui/Avatar';
-import { SIDEBAR_LINKS } from '../../utils/routePaths';
+import { SIDEBAR_LINKS, ROLE_LABELS } from '../../utils/routePaths';
 import { useAuth } from '../../hooks/useAuth';
 import './Sidebar.css';
 
 export default function Sidebar({ collapsed = false, onToggle }) {
   const location = useLocation();
   const { user, logout } = useAuth();
+
+  const roleLabel = ROLE_LABELS[user?.role] || 'User';
 
   return (
     <aside className={`sidebar ${collapsed ? 'sidebar-collapsed' : ''}`} id="app-sidebar">
@@ -45,12 +47,12 @@ export default function Sidebar({ collapsed = false, onToggle }) {
       </nav>
 
       <div className="sidebar-footer">
-        <div className="sidebar-user" title={collapsed ? user?.name : undefined}>
+        <div className="sidebar-user" title={collapsed ? (user?.name || 'User') : undefined}>
           <Avatar name={user?.name || 'User'} size="sm" />
           {!collapsed && (
             <div className="sidebar-user-info">
               <span className="sidebar-user-name">{user?.name || 'User'}</span>
-              <span className="sidebar-user-role">Patient</span>
+              <span className="sidebar-user-role">{roleLabel}</span>
             </div>
           )}
         </div>

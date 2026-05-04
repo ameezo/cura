@@ -1,9 +1,11 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import PublicLayout from '../layouts/PublicLayout';
 import DashboardLayout from '../layouts/DashboardLayout';
+import AdminLayout from '../layouts/AdminLayout';
 import AuthLayout from '../layouts/AuthLayout';
 import ProtectedRoute from './guards/ProtectedRoute';
 import GuestRoute from './guards/GuestRoute';
+import AdminRoute from './guards/AdminRoute';
 
 // Public Pages
 import HomePage from '../pages/HomePage';
@@ -37,9 +39,10 @@ import UnauthorizedPage from '../pages/UnauthorizedPage';
 
 // Admin
 import AdminPage from '../pages/AdminPage';
+import AdminSettingsPage from '../pages/AdminSettingsPage';
 
 const router = createBrowserRouter([
-  // Public routes
+  // ── Public routes ──────────────────────────────────────
   {
     element: <PublicLayout />,
     children: [
@@ -53,7 +56,7 @@ const router = createBrowserRouter([
     ],
   },
 
-  // Auth routes
+  // ── Auth routes ────────────────────────────────────────
   {
     element: <GuestRoute><AuthLayout /></GuestRoute>,
     children: [
@@ -62,13 +65,15 @@ const router = createBrowserRouter([
     ],
   },
 
-  // Onboarding routes (authenticated but no profile yet)
+  // ── Onboarding routes (authenticated, no profile yet) ──
   {
     element: <ProtectedRoute><OnboardingLayout /></ProtectedRoute>,
     children: [
       { path: '/onboarding/profile', element: <ProfileOnboardingPage /> },
     ],
   },
+
+  // ── Patient / Doctor dashboard ─────────────────────────
   {
     element: <ProtectedRoute requireProfile={true}><DashboardLayout /></ProtectedRoute>,
     children: [
@@ -81,7 +86,15 @@ const router = createBrowserRouter([
       { path: '/app/notifications', element: <NotificationsPage /> },
       { path: '/app/emergency', element: <EmergencySupportPage /> },
       { path: '/app/settings', element: <SettingsPage /> },
+    ],
+  },
+
+  // ── Admin — completely separate layout, role=admin only ─
+  {
+    element: <AdminRoute><AdminLayout /></AdminRoute>,
+    children: [
       { path: '/admin/doctors', element: <AdminPage /> },
+      { path: '/admin/settings', element: <AdminSettingsPage /> },
     ],
   },
 ]);

@@ -33,6 +33,12 @@ export function deleteAvailability(slotId) {
   });
 }
 
+export function getMyAvailability() {
+  return apiRequest("/bookings/availability/mine", {
+    method: "GET",
+  });
+}
+
 // ---------- Appointments ---------- //
 
 export function createAppointment(payload) {

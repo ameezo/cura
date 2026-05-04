@@ -14,6 +14,7 @@ class AvailabilityCreate(BaseModel):
 class AvailabilityResponse(BaseModel):
     id: int
     doctor_id: int
+    doctor_name: Optional[str] = None
     date: date
     start_time: time
     end_time: time
@@ -39,6 +40,8 @@ class AppointmentResponse(BaseModel):
     status: str
     notes: Optional[str] = None
     created_at: datetime
+    doctor_name: Optional[str] = None
+    patient_name: Optional[str] = None
     slot: Optional[AvailabilityResponse] = None
     
     class Config:

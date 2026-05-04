@@ -19,7 +19,9 @@ export default function ProtectedRoute({ children, requireProfile = false }) {
     return <Navigate to={ROUTES.LOGIN} replace />;
   }
 
-  if (requireProfile && user && user.has_profile === false) {
+  // Admins have no patient/doctor profile — skip onboarding redirect for them
+  const isAdmin = user?.role === 'admin';
+  if (requireProfile && user && user.has_profile === false && !isAdmin) {
     return <Navigate to={ROUTES.ONBOARDING_PROFILE} replace />;
   }
 

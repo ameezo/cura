@@ -6,6 +6,10 @@ export default function GuestRoute({ children }) {
   const { isAuthenticated, user } = useAuth();
 
   if (isAuthenticated) {
+    // Admins go straight to their dedicated admin panel
+    if (user?.role === 'admin') {
+      return <Navigate to={ROUTES.ADMIN_PANEL} replace />;
+    }
     if (user && user.has_profile === false) {
       return <Navigate to={ROUTES.ONBOARDING_PROFILE} replace />;
     }

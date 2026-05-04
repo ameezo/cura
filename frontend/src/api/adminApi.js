@@ -23,3 +23,15 @@ export function revokeDoctor(userId) {
     method: "PUT",
   });
 }
+
+export function getAdminProfile() {
+  return apiRequest("/admin/profile", { method: "GET" });
+}
+
+export function updateAdminProfile(data) {
+  return apiRequest("/admin/profile", {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+

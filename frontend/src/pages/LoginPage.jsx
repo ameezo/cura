@@ -24,8 +24,10 @@ export default function LoginPage() {
     }
     try {
       const userData = await login(form.email, form.password);
-      // Route based on profile completion status
-      if (userData.has_profile) {
+      // Admins go straight to the admin panel — they have no patient/doctor profile
+      if (userData.role === 'admin') {
+        navigate(ROUTES.ADMIN_PANEL);
+      } else if (userData.has_profile) {
         navigate(ROUTES.DASHBOARD);
       } else {
         navigate(ROUTES.ONBOARDING_PROFILE);

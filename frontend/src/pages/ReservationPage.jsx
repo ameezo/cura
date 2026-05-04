@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Select from '../components/ui/Select';
 import Alert from '../components/ui/Alert';
+import Modal from '../components/ui/Modal';
+import Tabs from '../components/ui/Tabs';
 import { SPECIALTIES } from '../utils/constants';
 import { apiRequest } from '../api/client';
 import { useAuth } from '../hooks/useAuth';
@@ -18,75 +20,39 @@ const formatTimeCustom = (timeStr) => {
   return `${displayH}:${minutes} ${ampm}`;
 };
 
-export default function ReservationPage() {
-  const { user } = useAuth();
-  const isDoctor = user?.role === 'doctor';
+const formatDateNice = (dateStr) => {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+};
 
-  // --- Doctor State ---
+/* ================================================================
+   DOCTOR VIEW — Create & Manage Sessions
+   ================================================================ */
+function DoctorView() {
   const [doctorForm, setDoctorForm] = useState({ date: '', start_time: '', end_time: '', slot_type: 'both' });
-  const [doctorSubmitted, setDoctorSubmitted] = useState(false);
-
-  // --- Patient State ---
-  const [step, setStep] = useState(1);
-  const [form, setForm] = useState({
-    specialty: '', doctor: '', date: '', slot_id: '', time: '', booking_type: 'online', name: '', email: '', phone: '', notes: '',
-  });
-  
-  const [doctors, setDoctors] = useState([]);
-  const [loadingDoctors, setLoadingDoctors] = useState(true);
-  const [availableSlots, setAvailableSlots] = useState([]);
-  const [loadingSlots, setLoadingSlots] = useState(false);
-  
-  const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
 
-  // Fetch doctors on mount
-  useEffect(() => {
-    apiRequest('/doctors/')
-      .then(data => setDoctors(data))
-      .catch(err => console.error("Failed to load doctors:", err))
-      .finally(() => setLoadingDoctors(false));
+  const [mySessions, setMySessions] = useState([]);
+  const [loadingSessions, setLoadingSessions] = useState(true);
+  const [deleteError, setDeleteError] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+
+  const fetchMySessions = useCallback(async () => {
+    setLoadingSessions(true);
+    try {
+      const data = await apiRequest('/bookings/availability/mine');
+      setMySessions(data);
+    } catch (err) {
+      console.error('Failed to load sessions:', err);
+    } finally {
+      setLoadingSessions(false);
+    }
   }, []);
 
-  // Fetch slots when doctor and date change
-  useEffect(() => {
-    if (form.doctor && form.date) {
-      setLoadingSlots(true);
-      apiRequest(`/bookings/availability/${form.doctor}?date=${form.date}`)
-        .then(data => setAvailableSlots(data))
-        .catch(err => {
-          console.error("Failed to load slots:", err);
-          setAvailableSlots([]);
-        })
-        .finally(() => setLoadingSlots(false));
-    }
-  }, [form.doctor, form.date]);
-
-  const filteredDoctors = doctors.filter((d) => !form.specialty || d.specialization === form.specialty);
-
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSubmitError(null);
-    setIsSubmitting(true);
-    try {
-      await apiRequest('/bookings/appointments', {
-        method: 'POST',
-        body: JSON.stringify({
-          availability_id: form.slot_id,
-          booking_type: form.booking_type,
-          notes: form.notes
-        })
-      });
-      setSubmitted(true);
-    } catch (err) {
-      setSubmitError(err.message || 'Failed to book appointment. Please ensure you are logged in as a patient.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  useEffect(() => { fetchMySessions(); }, [fetchMySessions]);
 
   const handleDoctorChange = (e) => setDoctorForm({ ...doctorForm, [e.target.name]: e.target.value });
 
@@ -99,138 +65,292 @@ export default function ReservationPage() {
         method: 'POST',
         body: JSON.stringify(doctorForm)
       });
-      setDoctorSubmitted(true);
+      setSubmitSuccess(true);
+      setDoctorForm({ date: '', start_time: '', end_time: '', slot_type: 'both' });
+      fetchMySessions();
+      setTimeout(() => setSubmitSuccess(false), 3000);
     } catch (err) {
-      setSubmitError(err.message || 'Failed to open session. Ensure times are correct and not overlapping.');
+      setSubmitError(err.message || 'Failed to open session.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const selectedDoctor = doctors.find((d) => d.id === form.doctor);
+  const handleDeleteSlot = async (slotId) => {
+    setDeleteError(null);
+    setDeletingId(slotId);
+    try {
+      await apiRequest(`/bookings/availability/${slotId}`, { method: 'DELETE' });
+      fetchMySessions();
+    } catch (err) {
+      setDeleteError(err.message || 'Failed to delete session.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
-  if (isDoctor) {
-    if (doctorSubmitted) {
-      return (
-        <div className="reservation-page">
-          <div className="container section">
-            <div className="reservation-success animate-scale-in">
-              <div className="success-icon">
-                <span className="material-symbols-rounded">check_circle</span>
+  const createSessionContent = (
+    <div className="doctor-create-session">
+      <Card className="reservation-card" style={{ maxWidth: '600px', margin: '0 auto' }}>
+        <form onSubmit={handleDoctorSubmit}>
+          <div className="form-step animate-fade-in">
+            <h3>Session Details</h3>
+            <Input label="Date" type="date" name="date" value={doctorForm.date} onChange={handleDoctorChange} required icon="calendar_today" />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1.5rem' }}>
+              <Input label="Start Time" type="time" name="start_time" value={doctorForm.start_time} onChange={handleDoctorChange} required icon="schedule" />
+              <Input label="End Time" type="time" name="end_time" value={doctorForm.end_time} onChange={handleDoctorChange} required icon="schedule" />
+            </div>
+            <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
+              <label className="input-label">Session Type</label>
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                {['online', 'onsite', 'both'].map(t => (
+                  <label key={t} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                    <input type="radio" name="slot_type" value={t} checked={doctorForm.slot_type === t} onChange={handleDoctorChange} />
+                    {t === 'online' ? 'Online' : t === 'onsite' ? 'On-site' : 'Both'}
+                  </label>
+                ))}
               </div>
-              <h2>Session Opened!</h2>
-              <p>Your availability slot has been created.</p>
-              <Card className="reservation-summary-card">
-                <div className="summary-row"><span>Date</span><strong>{doctorForm.date}</strong></div>
-                <div className="summary-row"><span>Time</span><strong>{formatTimeCustom(doctorForm.start_time)} - {formatTimeCustom(doctorForm.end_time)}</strong></div>
-                <div className="summary-row"><span>Type</span><strong>{doctorForm.slot_type}</strong></div>
-              </Card>
-              <Button variant="primary" icon="add" onClick={() => { 
-                setDoctorSubmitted(false); 
-                setDoctorForm({ date: '', start_time: '', end_time: '', slot_type: 'both' });
-              }}>
-                Open Another Session
+            </div>
+            {submitError && <Alert variant="error" style={{ marginBottom: '1rem' }}>{submitError}</Alert>}
+            {submitSuccess && <Alert variant="success" style={{ marginBottom: '1rem' }}>Session created successfully!</Alert>}
+            <div className="form-actions" style={{ justifyContent: 'flex-end', marginTop: '2rem' }}>
+              <Button variant="primary" type="submit" icon="add_circle" disabled={isSubmitting || !doctorForm.date || !doctorForm.start_time || !doctorForm.end_time}>
+                {isSubmitting ? 'Opening...' : 'Open Session'}
               </Button>
             </div>
           </div>
+        </form>
+      </Card>
+    </div>
+  );
+
+  const mySessionsContent = (
+    <div className="doctor-sessions-list">
+      {deleteError && <Alert variant="error" style={{ marginBottom: '1rem' }}>{deleteError}</Alert>}
+      {loadingSessions ? (
+        <div className="sessions-loading">Loading your sessions...</div>
+      ) : mySessions.length === 0 ? (
+        <div className="sessions-empty">
+          <span className="material-symbols-rounded" style={{ fontSize: '48px', color: 'var(--color-text-muted)', marginBottom: '1rem' }}>event_busy</span>
+          <p>You haven't created any sessions yet.</p>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)' }}>Switch to "Create Session" to add your first availability slot.</p>
         </div>
-      );
-    }
-
-    return (
-      <div className="reservation-page">
-        <section className="reservation-hero section">
-          <div className="container">
-            <div className="section-header">
-              <span className="section-badge">Availability</span>
-              <h1>Open New <span className="text-gradient">Session</span></h1>
-              <p>Define your available times for patients to book.</p>
-            </div>
-          </div>
-        </section>
-
-        <section className="reservation-form-section section-sm">
-          <div className="container">
-            <Card className="reservation-card" style={{ maxWidth: '600px', margin: '0 auto' }}>
-              <form onSubmit={handleDoctorSubmit}>
-                <div className="form-step animate-fade-in">
-                  <h3>Session Details</h3>
-                  
-                  <Input label="Date" type="date" name="date" value={doctorForm.date} onChange={handleDoctorChange} required icon="calendar_today" />
-                  
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1.5rem' }}>
-                    <Input label="Start Time" type="time" name="start_time" value={doctorForm.start_time} onChange={handleDoctorChange} required icon="schedule" />
-                    <Input label="End Time" type="time" name="end_time" value={doctorForm.end_time} onChange={handleDoctorChange} required icon="schedule" />
-                  </div>
-
-                  <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
-                    <label className="input-label">Session Type</label>
-                    <div style={{ display: 'flex', gap: '1rem' }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                        <input type="radio" name="slot_type" value="online" checked={doctorForm.slot_type === 'online'} onChange={handleDoctorChange} />
-                        Online
-                      </label>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                        <input type="radio" name="slot_type" value="onsite" checked={doctorForm.slot_type === 'onsite'} onChange={handleDoctorChange} />
-                        On-site
-                      </label>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                        <input type="radio" name="slot_type" value="both" checked={doctorForm.slot_type === 'both'} onChange={handleDoctorChange} />
-                        Both
-                      </label>
-                    </div>
-                  </div>
-
-                  {submitError && (
-                    <Alert variant="error" style={{ marginBottom: '1rem' }}>
-                      {submitError}
-                    </Alert>
-                  )}
-
-                  <div className="form-actions" style={{ justifyContent: 'flex-end', marginTop: '2rem' }}>
-                    <Button variant="primary" type="submit" icon="add_circle" disabled={isSubmitting || !doctorForm.date || !doctorForm.start_time || !doctorForm.end_time}>
-                      {isSubmitting ? 'Opening...' : 'Open Session'}
-                    </Button>
-                  </div>
+      ) : (
+        <div className="sessions-grid">
+          {mySessions.map((session) => (
+            <Card key={session.id} className={`session-card ${session.is_booked ? 'session-booked' : 'session-available'}`}>
+              <div className="session-card-header">
+                <div className="session-date-badge">
+                  <span className="material-symbols-rounded">calendar_today</span>
+                  {formatDateNice(session.date)}
                 </div>
-              </form>
+                <span className={`session-status-badge ${session.is_booked ? 'status-booked' : 'status-available'}`}>
+                  {session.is_booked ? (
+                    <><span className="material-symbols-rounded" style={{ fontSize: '14px' }}>lock</span> Booked</>
+                  ) : (
+                    <><span className="material-symbols-rounded" style={{ fontSize: '14px' }}>check_circle</span> Available</>
+                  )}
+                </span>
+              </div>
+              <div className="session-card-body">
+                <div className="session-time">
+                  <span className="material-symbols-rounded">schedule</span>
+                  {formatTimeCustom(session.start_time)} — {formatTimeCustom(session.end_time)}
+                </div>
+                <div className="session-type">
+                  <span className="material-symbols-rounded">
+                    {session.slot_type === 'online' ? 'videocam' : session.slot_type === 'onsite' ? 'location_on' : 'swap_horiz'}
+                  </span>
+                  {session.slot_type === 'online' ? 'Online' : session.slot_type === 'onsite' ? 'On-site' : 'Online & On-site'}
+                </div>
+                {session.is_booked && session.booked_patient_name && (
+                  <div className="session-patient">
+                    <span className="material-symbols-rounded">person</span>
+                    Patient: <strong>{session.booked_patient_name}</strong>
+                  </div>
+                )}
+              </div>
+              <div className="session-card-footer">
+                {session.is_booked ? (
+                  <span className="session-lock-msg">
+                    <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>info</span>
+                    Only the patient can cancel this booking
+                  </span>
+                ) : (
+                  <Button variant="ghost" icon="delete" onClick={() => handleDeleteSlot(session.id)} disabled={deletingId === session.id} className="session-delete-btn">
+                    {deletingId === session.id ? 'Deleting...' : 'Delete'}
+                  </Button>
+                )}
+              </div>
             </Card>
-          </div>
-        </section>
-      </div>
-    );
-  }
+          ))}
+        </div>
+      )}
+    </div>
+  );
 
-  if (submitted) {
-    return (
-      <div className="reservation-page">
-        <div className="container section">
-          <div className="reservation-success animate-scale-in">
-            <div className="success-icon">
-              <span className="material-symbols-rounded">check_circle</span>
-            </div>
-            <h2>Reservation Submitted!</h2>
-            <p>Your appointment request has been confirmed.</p>
-            <Card className="reservation-summary-card">
-              <div className="summary-row"><span>Doctor</span><strong>{selectedDoctor?.full_name}</strong></div>
-              <div className="summary-row"><span>Specialty</span><strong>{selectedDoctor?.specialization}</strong></div>
-              <div className="summary-row"><span>Date</span><strong>{form.date}</strong></div>
-              <div className="summary-row"><span>Time</span><strong>{form.time}</strong></div>
-              <div className="summary-row"><span>Type</span><strong>{form.booking_type === 'online' ? 'Online Consultation' : 'On-site Visit'}</strong></div>
-            </Card>
-            <Button variant="primary" icon="home" onClick={() => { 
-              setSubmitted(false); 
-              setStep(1); 
-              setForm({ specialty: '', doctor: '', date: '', slot_id: '', time: '', booking_type: 'online', name: '', email: '', phone: '', notes: '' }); 
-              setAvailableSlots([]);
-            }}>
-              Book Another
-            </Button>
+  const tabs = [
+    { key: 'create', label: 'Create Session', icon: 'add_circle', content: createSessionContent },
+    { key: 'sessions', label: 'My Sessions', icon: 'event_note', count: mySessions.length, content: mySessionsContent },
+  ];
+
+  return (
+    <div className="reservation-page">
+      <section className="reservation-hero section">
+        <div className="container">
+          <div className="section-header">
+            <span className="section-badge">Doctor Portal</span>
+            <h1>Manage Your <span className="text-gradient">Sessions</span></h1>
+            <p>Create availability slots and view your bookings.</p>
           </div>
         </div>
-      </div>
-    );
-  }
+      </section>
+      <section className="reservation-form-section section-sm">
+        <div className="container">
+          <Tabs tabs={tabs} defaultTab="create" />
+        </div>
+      </section>
+    </div>
+  );
+}
+
+/* ================================================================
+   PATIENT / GUEST VIEW — Browse & Book All Available Sessions
+   ================================================================ */
+function PatientView() {
+  const { user } = useAuth();
+  const isLoggedIn = !!user;
+
+  // --- All available sessions (pre-loaded, no date needed) ---
+  const [allSlots, setAllSlots] = useState([]);
+  const [loadingSlots, setLoadingSlots] = useState(true);
+  const [specialty, setSpecialty] = useState('');
+
+  // --- Booking modal ---
+  const [bookingSlot, setBookingSlot] = useState(null);
+  const [bookingType, setBookingType] = useState('online');
+  const [bookingNotes, setBookingNotes] = useState('');
+  const [isBooking, setIsBooking] = useState(false);
+  const [bookingError, setBookingError] = useState(null);
+  const [bookingSuccess, setBookingSuccess] = useState(false);
+
+  // --- My Bookings ---
+  const [myBookings, setMyBookings] = useState([]);
+  const [loadingBookings, setLoadingBookings] = useState(false);
+  const [cancellingId, setCancellingId] = useState(null);
+
+  // --- Doctors lookup (for specialty filtering) ---
+  const [doctors, setDoctors] = useState([]);
+
+  // Fetch all available sessions + doctors on mount
+  const fetchSlots = useCallback(async () => {
+    setLoadingSlots(true);
+    try {
+      const data = await apiRequest('/bookings/availability');
+      setAllSlots(data);
+    } catch (err) {
+      console.error('Failed to load slots:', err);
+    } finally {
+      setLoadingSlots(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSlots();
+    apiRequest('/doctors/')
+      .then(data => setDoctors(data))
+      .catch(err => console.error('Failed to load doctors:', err));
+  }, [fetchSlots]);
+
+  // Fetch patient bookings
+  const fetchMyBookings = useCallback(async () => {
+    if (!isLoggedIn || user?.role !== 'patient') return;
+    setLoadingBookings(true);
+    try {
+      const data = await apiRequest('/bookings/appointments');
+      setMyBookings(data);
+    } catch (err) {
+      console.error('Failed to load bookings:', err);
+    } finally {
+      setLoadingBookings(false);
+    }
+  }, [isLoggedIn, user?.role]);
+
+  useEffect(() => { fetchMyBookings(); }, [fetchMyBookings]);
+
+  // Build doctor lookup map for specialty filtering
+  const doctorMap = {};
+  doctors.forEach(d => { doctorMap[d.id] = d; });
+
+  // Filter slots by specialty
+  const filteredSlots = allSlots.filter(slot => {
+    if (!specialty) return true;
+    const doc = doctorMap[slot.doctor_id];
+    return doc && doc.specialization === specialty;
+  });
+
+  // Group by doctor for display
+  const slotsByDoctor = {};
+  filteredSlots.forEach(slot => {
+    const key = slot.doctor_id;
+    if (!slotsByDoctor[key]) {
+      const doc = doctorMap[key];
+      slotsByDoctor[key] = {
+        doctor: doc || { full_name: slot.doctor_name || `Doctor #${key}`, specialization: '', clinic_location: '' },
+        doctorName: slot.doctor_name || doc?.full_name || `Doctor #${key}`,
+        slots: []
+      };
+    }
+    slotsByDoctor[key].slots.push(slot);
+  });
+
+  const handleBookSlot = (slot) => {
+    if (!isLoggedIn) {
+      alert('Please log in as a patient to book an appointment.');
+      return;
+    }
+    setBookingSlot(slot);
+    setBookingType('online');
+    setBookingNotes('');
+    setBookingError(null);
+    setBookingSuccess(false);
+  };
+
+  const handleConfirmBooking = async () => {
+    if (!bookingSlot) return;
+    setBookingError(null);
+    setIsBooking(true);
+    try {
+      await apiRequest('/bookings/appointments', {
+        method: 'POST',
+        body: JSON.stringify({
+          availability_id: bookingSlot.id,
+          booking_type: bookingType,
+          notes: bookingNotes || null
+        })
+      });
+      setBookingSuccess(true);
+      fetchSlots();
+      fetchMyBookings();
+    } catch (err) {
+      setBookingError(err.message || 'Failed to book appointment.');
+    } finally {
+      setIsBooking(false);
+    }
+  };
+
+  const handleCancelBooking = async (appointmentId) => {
+    setCancellingId(appointmentId);
+    try {
+      await apiRequest(`/bookings/appointments/${appointmentId}/cancel`, { method: 'PUT' });
+      fetchMyBookings();
+      fetchSlots();
+    } catch (err) {
+      console.error('Failed to cancel:', err);
+    } finally {
+      setCancellingId(null);
+    }
+  };
 
   return (
     <div className="reservation-page">
@@ -238,148 +358,221 @@ export default function ReservationPage() {
         <div className="container">
           <div className="section-header">
             <span className="section-badge">Book Now</span>
-            <h1>Reserve Your <span className="text-gradient">Appointment</span></h1>
-            <p>Choose your doctor, pick a time, and we'll handle the rest.</p>
+            <h1>Available <span className="text-gradient">Sessions</span></h1>
+            <p>Browse all open sessions from our doctors and book instantly.</p>
           </div>
         </div>
       </section>
 
+      {/* Available Sessions */}
       <section className="reservation-form-section section-sm">
         <div className="container">
-          {/* Step Indicators */}
-          <div className="steps-indicator">
-            {['Doctor', 'Schedule', 'Details'].map((label, i) => (
-              <div key={label} className={`step-dot ${step >= i + 1 ? 'step-active' : ''} ${step > i + 1 ? 'step-done' : ''}`}>
-                <div className="step-dot-circle">{step > i + 1 ? '✓' : i + 1}</div>
-                <span>{label}</span>
-              </div>
-            ))}
+          <div className="patient-filter-bar">
+            <Select
+              label="Filter by Specialty"
+              name="specialty"
+              value={specialty}
+              onChange={(e) => setSpecialty(e.target.value)}
+              options={SPECIALTIES}
+              placeholder="All specialties"
+              icon="medical_services"
+            />
           </div>
 
-          <Card className="reservation-card">
-            <form onSubmit={handleSubmit}>
-              {/* Step 1: Doctor Selection */}
-              {step === 1 && (
-                <div className="form-step animate-fade-in">
-                  <h3>Choose a Doctor</h3>
-                  <Select label="Specialty" name="specialty" value={form.specialty} onChange={handleChange} options={SPECIALTIES} placeholder="All specialties" icon="medical_services" />
-                  
-                  {loadingDoctors ? (
-                    <div style={{ textAlign: 'center', padding: '2rem' }}>Loading doctors...</div>
-                  ) : (
-                    <div className="doctor-grid">
-                      {filteredDoctors.length > 0 ? filteredDoctors.map((doc) => (
-                        <div key={doc.id} className={`doctor-option ${form.doctor === doc.id ? 'doctor-selected' : ''}`} onClick={() => setForm({ ...form, doctor: doc.id })}>
-                          <div className="doctor-option-avatar">
-                            <span className="material-symbols-rounded">person</span>
-                          </div>
-                          <div className="doctor-option-info">
-                            <strong>{doc.full_name}</strong>
-                            <span>{doc.specialization}</span>
-                            <span className="doctor-option-meta">
-                              {doc.clinic_location ? `📍 ${doc.clinic_location}` : 'Online Only'}
-                            </span>
-                          </div>
-                          {form.doctor === doc.id && <span className="material-symbols-rounded doctor-check">check_circle</span>}
-                        </div>
-                      )) : (
-                        <div style={{ textAlign: 'center', padding: '2rem', gridColumn: '1 / -1' }}>No doctors found for this specialty.</div>
+          {loadingSlots ? (
+            <div className="loading-center">Loading available sessions...</div>
+          ) : Object.keys(slotsByDoctor).length === 0 ? (
+            <div className="sessions-empty">
+              <span className="material-symbols-rounded" style={{ fontSize: '56px', color: 'var(--color-text-muted)' }}>event_busy</span>
+              <p style={{ marginTop: '1rem', fontSize: 'var(--text-lg)' }}>No available sessions right now</p>
+              <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)' }}>Check back later — doctors are adding new slots regularly.</p>
+            </div>
+          ) : (
+            <div className="doctor-sections">
+              {Object.values(slotsByDoctor).map(({ doctor, doctorName, slots }) => (
+                <div key={doctor.id || doctorName} className="doctor-section animate-fade-in">
+                  <div className="doctor-section-header">
+                    <div className="doctor-section-avatar">
+                      <span className="material-symbols-rounded">person</span>
+                    </div>
+                    <div className="doctor-section-info">
+                      <h3>{doctorName}</h3>
+                      <span className="doctor-section-spec">{doctor.specialization}</span>
+                      {doctor.clinic_location && (
+                        <span className="doctor-section-loc">📍 {doctor.clinic_location}</span>
                       )}
                     </div>
-                  )}
-                  
-                  <div className="form-actions">
-                    <Button variant="primary" iconRight="arrow_forward" onClick={() => setStep(2)} disabled={!form.doctor}>Continue</Button>
+                    <span className="doctor-section-count">{slots.length} session{slots.length !== 1 ? 's' : ''}</span>
+                  </div>
+
+                  <div className="available-slots-grid">
+                    {slots.map((slot) => (
+                      <button
+                        key={slot.id}
+                        type="button"
+                        className="available-slot-card"
+                        onClick={() => handleBookSlot(slot)}
+                      >
+                        <div className="slot-card-date">
+                          <span className="material-symbols-rounded">calendar_today</span>
+                          {formatDateNice(slot.date)}
+                        </div>
+                        <div className="slot-card-time">
+                          <span className="material-symbols-rounded">schedule</span>
+                          {formatTimeCustom(slot.start_time)} — {formatTimeCustom(slot.end_time)}
+                        </div>
+                        <div className="slot-card-type">
+                          {slot.slot_type === 'online' ? '💻 Online' : slot.slot_type === 'onsite' ? '🏥 On-site' : '💻🏥 Both'}
+                        </div>
+                        <span className="slot-card-book-label">
+                          <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>event_available</span>
+                          Book Now
+                        </span>
+                      </button>
+                    ))}
                   </div>
                 </div>
-              )}
+              ))}
+            </div>
+          )}
 
-              {/* Step 2: Date & Time */}
-              {step === 2 && (
-                <div className="form-step animate-fade-in">
-                  <h3>Pick Date & Time</h3>
-                  <Input label="Date" type="date" name="date" value={form.date} onChange={handleChange} required icon="calendar_today" />
-                  
-                  <div className="time-slots" style={{ marginTop: '1.5rem' }}>
-                    <label className="input-label">Available Times</label>
-                    
-                    {!form.date ? (
-                      <div style={{ color: 'var(--color-text-light)', padding: '1rem 0' }}>Please select a date to view available slots.</div>
-                    ) : loadingSlots ? (
-                      <div style={{ padding: '1rem 0' }}>Loading available times...</div>
-                    ) : availableSlots.length > 0 ? (
-                      <div className="time-grid">
-                        {availableSlots.map((slot) => {
-                          const startStr = formatTimeCustom(slot.start_time);
-                          return (
-                            <button 
-                              type="button" 
-                              key={slot.id} 
-                              disabled={slot.is_booked}
-                              className={`time-slot ${form.slot_id === slot.id ? 'time-active' : ''} ${slot.is_booked ? 'time-disabled' : ''}`} 
-                              onClick={() => setForm({ ...form, slot_id: slot.id, time: startStr })}
-                              style={slot.is_booked ? { opacity: 0.5, cursor: 'not-allowed', textDecoration: 'line-through' } : {}}
-                            >
-                              {startStr}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div style={{ color: 'var(--color-text-light)', padding: '1rem 0' }}>No available slots found for this date.</div>
-                    )}
-                  </div>
-                  
-                  <div className="form-actions">
-                    <Button variant="ghost" icon="arrow_back" onClick={() => setStep(1)}>Back</Button>
-                    <Button variant="primary" iconRight="arrow_forward" onClick={() => setStep(3)} disabled={!form.date || !form.slot_id}>Continue</Button>
+          {/* Booking Confirmation Modal */}
+          <Modal
+            isOpen={!!bookingSlot && !bookingSuccess}
+            onClose={() => setBookingSlot(null)}
+            title="Confirm Your Booking"
+            size="sm"
+          >
+            {bookingSlot && (
+              <div className="booking-modal-content">
+                <div className="booking-modal-summary">
+                  <div className="summary-row"><span>Doctor</span><strong>{bookingSlot.doctor_name || 'Doctor'}</strong></div>
+                  <div className="summary-row"><span>Date</span><strong>{formatDateNice(bookingSlot.date)}</strong></div>
+                  <div className="summary-row"><span>Time</span><strong>{formatTimeCustom(bookingSlot.start_time)} — {formatTimeCustom(bookingSlot.end_time)}</strong></div>
+                </div>
+                <div style={{ marginTop: '1.5rem', marginBottom: '1rem' }}>
+                  <label className="input-label">Booking Type</label>
+                  <div style={{ display: 'flex', gap: '1rem' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                      <input type="radio" value="online" checked={bookingType === 'online'} onChange={() => setBookingType('online')} /> Online
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                      <input type="radio" value="onsite" checked={bookingType === 'onsite'} onChange={() => setBookingType('onsite')} /> On-site
+                    </label>
                   </div>
                 </div>
-              )}
-
-              {/* Step 3: Patient Details */}
-              {step === 3 && (
-                <div className="form-step animate-fade-in">
-                  <h3>Appointment Details</h3>
-                  
-                  <div style={{ marginBottom: '1.5rem' }}>
-                    <label className="input-label">Booking Type</label>
-                    <div style={{ display: 'flex', gap: '1rem' }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                        <input type="radio" name="booking_type" value="online" checked={form.booking_type === 'online'} onChange={handleChange} />
-                        Online Consultation
-                      </label>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                        <input type="radio" name="booking_type" value="onsite" checked={form.booking_type === 'onsite'} onChange={handleChange} />
-                        On-site Visit
-                      </label>
-                    </div>
-                  </div>
-
-                  <Input label="Notes (optional)" type="textarea" name="notes" value={form.notes} onChange={handleChange} placeholder="Any additional information for the doctor..." rows={3} />
-
-                  {submitError && (
-                    <Alert variant="error" style={{ marginBottom: '1rem' }}>
-                      {submitError}
-                    </Alert>
-                  )}
-
-                  <Alert variant="info">
-                    Your appointment with <strong>{selectedDoctor?.full_name}</strong> on {form.date} at {form.time} will be submitted for confirmation.
-                  </Alert>
-
-                  <div className="form-actions">
-                    <Button variant="ghost" icon="arrow_back" onClick={() => setStep(2)}>Back</Button>
-                    <Button variant="primary" type="submit" icon="check_circle" disabled={isSubmitting || !form.booking_type}>
-                      {isSubmitting ? 'Confirming...' : 'Confirm Reservation'}
-                    </Button>
-                  </div>
+                <Input label="Notes (optional)" type="textarea" name="notes" value={bookingNotes} onChange={(e) => setBookingNotes(e.target.value)} placeholder="Any info for the doctor..." rows={2} />
+                {bookingError && <Alert variant="error" style={{ marginTop: '1rem' }}>{bookingError}</Alert>}
+                <div className="form-actions" style={{ marginTop: '1.5rem' }}>
+                  <Button variant="ghost" onClick={() => setBookingSlot(null)}>Cancel</Button>
+                  <Button variant="primary" icon="check_circle" onClick={handleConfirmBooking} disabled={isBooking}>
+                    {isBooking ? 'Booking...' : 'Confirm Booking'}
+                  </Button>
                 </div>
-              )}
-            </form>
-          </Card>
+              </div>
+            )}
+          </Modal>
+
+          {/* Booking Success Modal */}
+          <Modal
+            isOpen={bookingSuccess}
+            onClose={() => { setBookingSuccess(false); setBookingSlot(null); }}
+            title="Booking Confirmed!"
+            size="sm"
+          >
+            <div className="booking-success-content">
+              <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
+                <span className="material-symbols-rounded" style={{ fontSize: '64px', color: 'var(--color-success)' }}>check_circle</span>
+              </div>
+              <p style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+                Your appointment has been confirmed! You can view and manage it in "My Bookings" below.
+              </p>
+              <div style={{ textAlign: 'center' }}>
+                <Button variant="primary" onClick={() => { setBookingSuccess(false); setBookingSlot(null); }}>Done</Button>
+              </div>
+            </div>
+          </Modal>
         </div>
       </section>
+
+      {/* My Bookings — only for logged-in patients */}
+      {isLoggedIn && user?.role === 'patient' && (
+        <section className="my-bookings-section section-sm">
+          <div className="container">
+            <div className="my-bookings-header">
+              <h2>
+                <span className="material-symbols-rounded">event_available</span>
+                My Bookings
+              </h2>
+            </div>
+
+            {loadingBookings ? (
+              <div className="loading-center">Loading your bookings...</div>
+            ) : myBookings.length === 0 ? (
+              <div className="sessions-empty" style={{ marginTop: '1rem' }}>
+                <span className="material-symbols-rounded" style={{ fontSize: '48px', color: 'var(--color-text-muted)' }}>event_busy</span>
+                <p style={{ marginTop: '0.5rem' }}>You don't have any bookings yet.</p>
+                <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)' }}>Browse the sessions above and book your first appointment.</p>
+              </div>
+            ) : (
+              <div className="bookings-grid">
+                {myBookings.map((booking) => (
+                  <Card key={booking.id} className={`booking-card booking-${booking.status}`}>
+                    <div className="booking-card-header">
+                      <span className={`booking-status-badge status-${booking.status}`}>
+                        {booking.status === 'confirmed' ? '✓ Confirmed' : booking.status === 'cancelled' ? '✕ Cancelled' : '✓ Completed'}
+                      </span>
+                    </div>
+                    <div className="booking-card-body">
+                      <div className="booking-doctor-name">
+                        <span className="material-symbols-rounded">person</span>
+                        {booking.doctor_name || `Doctor #${booking.doctor_id}`}
+                      </div>
+                      {booking.slot && (
+                        <>
+                          <div className="booking-detail">
+                            <span className="material-symbols-rounded">calendar_today</span>
+                            {formatDateNice(booking.slot.date)}
+                          </div>
+                          <div className="booking-detail">
+                            <span className="material-symbols-rounded">schedule</span>
+                            {formatTimeCustom(booking.slot.start_time)} — {formatTimeCustom(booking.slot.end_time)}
+                          </div>
+                        </>
+                      )}
+                      <div className="booking-detail">
+                        <span className="material-symbols-rounded">{booking.booking_type === 'online' ? 'videocam' : 'location_on'}</span>
+                        {booking.booking_type === 'online' ? 'Online' : 'On-site'}
+                      </div>
+                      {booking.notes && (
+                        <div className="booking-detail booking-notes">
+                          <span className="material-symbols-rounded">notes</span>
+                          {booking.notes}
+                        </div>
+                      )}
+                    </div>
+                    {booking.status === 'confirmed' && (
+                      <div className="booking-card-footer">
+                        <Button variant="ghost" icon="cancel" onClick={() => handleCancelBooking(booking.id)} disabled={cancellingId === booking.id} className="booking-cancel-btn">
+                          {cancellingId === booking.id ? 'Cancelling...' : 'Cancel Booking'}
+                        </Button>
+                      </div>
+                    )}
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
     </div>
   );
+}
+
+/* ================================================================
+   MAIN — Route by role
+   ================================================================ */
+export default function ReservationPage() {
+  const { user } = useAuth();
+  return user?.role === 'doctor' ? <DoctorView /> : <PatientView />;
 }
