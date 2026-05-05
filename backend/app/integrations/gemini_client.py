@@ -1,6 +1,9 @@
 """
 Gemini AI Client — Isolated integration layer with automatic fallback.
 Providers: 1. Gemini API Studio -> 2. Vertex AI -> 3. Groq
+
+On GCP (Cloud Run): Vertex AI is primary (uses IAM — no API key needed)
+On local/Docker:    Gemini API is primary (uses API key)
 """
 
 import os
@@ -12,6 +15,9 @@ logger = logging.getLogger(__name__)
 
 # ── Configuration ────────────────────────────────────────────────────────────
 AI_CHAT_ENABLED = os.getenv("AI_CHAT_ENABLED", "false").lower() == "true"
+
+# GCP Detection — Cloud Run sets K_SERVICE automatically
+RUNNING_ON_GCP = os.getenv("K_SERVICE", "") != ""
 
 # Gemini Config
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
@@ -77,7 +83,7 @@ def _is_emergency(message: str) -> bool:
 # ── Provider Implementations ─────────────────────────────────────────────────
 
 def _call_gemini_api(user_message: str, message_history: List[Dict]) -> str:
-    """Call Google Gemini API via AI Studio (Primary)"""
+    """Call Google Gemini API via AI Studio (Primary on local)"""
     if not GEMINI_API_KEY:
         raise ValueError("GEMINI_API_KEY is not set")
 
@@ -108,7 +114,7 @@ def _call_gemini_api(user_message: str, message_history: List[Dict]) -> str:
 
 
 def _call_vertex_ai(user_message: str, message_history: List[Dict]) -> str:
-    """Call Google Vertex AI (Secondary)"""
+    """Call Google Vertex AI (Primary on GCP — uses IAM, no API key needed)"""
     if not GOOGLE_CLOUD_PROJECT:
         raise ValueError("GOOGLE_CLOUD_PROJECT is not set")
 
@@ -176,11 +182,10 @@ def _call_groq_api(user_message: str, message_history: List[Dict]) -> str:
 
 def generate_response(user_message: str, message_history: List[Dict] = None) -> str:
     """
-    Generate an AI response using a fallback strategy:
-    1. Check for emergency keywords
-    2. Try Gemini API
-    3. Try Vertex AI
-    4. Try Groq
+    Generate an AI response using a fallback strategy.
+
+    On GCP (Cloud Run):  Vertex AI → Gemini API → Groq
+    On local/Docker:     Gemini API → Vertex AI → Groq
     """
     if not AI_CHAT_ENABLED:
         return "AI Chat is currently disabled. Please contact the administrator."
@@ -192,21 +197,32 @@ def generate_response(user_message: str, message_history: List[Dict] = None) -> 
     if message_history is None:
         message_history = []
 
-    # 2. Try Gemini API Studio (Primary)
-    try:
-        return _call_gemini_api(user_message, message_history)
-    except Exception as e:
-        logger.warning(f"Gemini API failed, falling back to Vertex AI: {e}")
-        
-        # 3. Try Vertex AI (Secondary)
+    # 2. Build provider chain based on environment
+    if RUNNING_ON_GCP:
+        # On GCP: Vertex AI uses automatic IAM credentials (no API key needed)
+        providers = [
+            ("Vertex AI", _call_vertex_ai),
+            ("Gemini API", _call_gemini_api),
+            ("Groq", _call_groq_api),
+        ]
+        logger.info("Running on GCP — Vertex AI is primary provider")
+    else:
+        # On local/Docker: Gemini API uses API key
+        providers = [
+            ("Gemini API", _call_gemini_api),
+            ("Vertex AI", _call_vertex_ai),
+            ("Groq", _call_groq_api),
+        ]
+
+    # 3. Try each provider in order, falling back on failure
+    last_error = None
+    for i, (name, fn) in enumerate(providers):
         try:
-            return _call_vertex_ai(user_message, message_history)
-        except Exception as e2:
-            logger.warning(f"Vertex AI failed, falling back to Groq: {e2}")
-            
-            # 4. Try Groq (Tertiary)
-            try:
-                return _call_groq_api(user_message, message_history)
-            except Exception as e3:
-                logger.error(f"All AI providers failed. Final error: {e3}")
-                return "I'm currently experiencing technical difficulties across all systems. Please try again later."
+            return fn(user_message, message_history)
+        except Exception as e:
+            last_error = e
+            next_name = providers[i + 1][0] if i + 1 < len(providers) else "none"
+            logger.warning(f"{name} failed, falling back to {next_name}: {e}")
+
+    logger.error(f"All AI providers failed. Final error: {last_error}")
+    return "I'm currently experiencing technical difficulties across all systems. Please try again later."

@@ -11,7 +11,14 @@ class Settings(BaseSettings):
     POSTGRES_HOST: str = os.getenv("POSTGRES_HOST", "db")
     POSTGRES_PORT: str = os.getenv("POSTGRES_PORT", "5432")
     
-    SQLALCHEMY_DATABASE_URI: str = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
+    # Cloud SQL on Cloud Run uses Unix sockets (POSTGRES_HOST starts with "/")
+    # Local/Docker uses TCP (hostname:port)
+    SQLALCHEMY_DATABASE_URI: str = (
+        f"postgresql+pg8000://{POSTGRES_USER}:{POSTGRES_PASSWORD}@/{POSTGRES_DB}"
+        f"?unix_sock={POSTGRES_HOST}/.s.PGSQL.{POSTGRES_PORT}"
+        if POSTGRES_HOST.startswith("/")
+        else f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
+    )
     
     SECRET_KEY: str = os.getenv("SECRET_KEY", "super-secret-key-change-in-production")
     ALGORITHM: str = "HS256"

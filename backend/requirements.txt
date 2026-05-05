@@ -10,3 +10,4 @@ apscheduler
 Flask-CORS
 google-genai
 groq
+pg8000
