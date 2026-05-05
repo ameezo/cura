@@ -269,7 +269,7 @@ gcloud run deploy cura-frontend \
   --region=$REGION \
   --platform=managed \
   --allow-unauthenticated \
-  --port=80 \
+  --port=8080 \
   --memory=256Mi \
   --cpu=1 \
   --min-instances=0 \
