@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, g, send_file
 from app.core.security import require_role
 from app.services import patient_service, doctor_service
+from app.services.notification_service import create_notification
 from app.models.lab_result import LabResult
 from app.schemas.lab_result import LabResultCreate
 from pydantic import ValidationError
@@ -152,6 +153,20 @@ def release_lab_result(id):
         result.released_to_patient = True
         result.published_at = datetime.utcnow()
         db.session.commit()
+
+        # Notify the patient
+        try:
+            patient_profile = patient_service.get_patient_by_id(result.patient_id)
+            if patient_profile:
+                create_notification(
+                    user_id=patient_profile.user_id,
+                    type="lab_result",
+                    title="New Lab Result Available",
+                    message=f"Your {result.test_name} results are now available for review.",
+                    related_id=result.id
+                )
+        except Exception:
+            pass
         
     return jsonify({"msg": "Lab result released to patient successfully"}), 200
 

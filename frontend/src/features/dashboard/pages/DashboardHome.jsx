@@ -7,9 +7,9 @@ import { useAuth } from '../../../hooks/useAuth';
 import { getAppointments } from '../../../api/bookingsApi';
 import { getDoctors } from '../../../api/doctorsApi';
 import { getAvailability } from '../../../api/bookingsApi';
-import { getPatientMedications } from '../../../api/medicationsApi';
-import { getMyReminders } from '../../../api/remindersApi';
-import { getPatientLabResults } from '../../../api/labResultsApi';
+import { getMyMedications, getDoctorMedications } from '../../../api/medicationsApi';
+import { getMyNotifications } from '../../../api/notificationsApi';
+import { getPatientLabResults, getDoctorLabResults } from '../../../api/labResultsApi';
 import { mapAppointment } from '../../../api/mappers';
 import { ROUTES } from '../../../utils/routePaths';
 import './DashboardHome.css';
@@ -31,7 +31,8 @@ export default function DashboardHome() {
   // Real data state
   const [appointments, setAppointments] = useState([]);
   const [medications, setMedications] = useState([]);
-  const [reminders, setReminders] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [labResults, setLabResults] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
 
@@ -43,7 +44,7 @@ export default function DashboardHome() {
       const results = await Promise.allSettled([
         loadAppointments(),
         loadMedications(),
-        loadReminders(),
+        loadNotifications(),
         loadLabResults(),
       ]);
       setLoadingData(false);
@@ -74,25 +75,28 @@ export default function DashboardHome() {
 
     async function loadMedications() {
       try {
-        const data = await getPatientMedications(user?.profile_id || user?.id);
+        const isDoctor = user?.role === 'doctor';
+        const data = isDoctor ? await getDoctorMedications() : await getMyMedications();
         setMedications(data);
       } catch {
         setMedications([]);
       }
     }
 
-    async function loadReminders() {
+    async function loadNotifications() {
       try {
-        const data = await getMyReminders();
-        setReminders(data);
+        const result = await getMyNotifications();
+        setNotifications(result.notifications || []);
+        setUnreadCount(result.unread_count || 0);
       } catch {
-        setReminders([]);
+        setNotifications([]);
       }
     }
 
     async function loadLabResults() {
       try {
-        const data = await getPatientLabResults();
+        const isDoctor = user?.role === 'doctor';
+        const data = isDoctor ? await getDoctorLabResults() : await getPatientLabResults();
         setLabResults(data);
       } catch {
         setLabResults([]);
@@ -115,7 +119,7 @@ export default function DashboardHome() {
   const nextApt = appointments.find((a) => a.status === 'confirmed' || a.status === 'pending');
   const upcomingCount = appointments.filter(a => a.status !== 'completed' && a.status !== 'cancelled').length;
   const activeMeds = medications.filter((m) => m.is_active);
-  const pendingReminders = reminders.filter((r) => r.status === 'pending');
+  const unreadNotifications = notifications.filter((n) => !n.is_read);
 
   return (
     <div className="dashboard-home">
@@ -164,7 +168,7 @@ export default function DashboardHome() {
             <span className="material-symbols-rounded">notifications</span>
           </div>
           <div className="dash-stat-info">
-            <span className="dash-stat-value">{loadingData ? '–' : pendingReminders.length}</span>
+            <span className="dash-stat-value">{loadingData ? '–' : unreadCount}</span>
             <span className="dash-stat-label">Pending</span>
           </div>
         </Card>
@@ -247,26 +251,26 @@ export default function DashboardHome() {
             </Card>
           )}
 
-          {/* Reminders — real data */}
+          {/* Notifications — real data */}
           <Card className="dash-card animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
             <div className="dash-card-header">
-              <h3><span className="material-symbols-rounded">notifications</span> Pending Reminders</h3>
+              <h3><span className="material-symbols-rounded">notifications</span> Recent Notifications</h3>
               <Link to={ROUTES.NOTIFICATIONS}><Button variant="ghost" size="sm">View All</Button></Link>
             </div>
-            {pendingReminders.length > 0 ? (
+            {unreadNotifications.length > 0 ? (
               <div className="dash-notif-list">
-                {pendingReminders.slice(0, 4).map((r) => (
-                  <div key={r.id} className="dash-notif-item dash-notif-unread">
+                {unreadNotifications.slice(0, 4).map((n) => (
+                  <div key={n.id} className="dash-notif-item dash-notif-unread">
                     <div className="dash-notif-dot" />
                     <div className="dash-notif-content">
-                      <strong>{r.title}</strong>
-                      <span>{r.message}</span>
+                      <strong>{n.title}</strong>
+                      <span>{n.message}</span>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="dash-empty-hint">All caught up! No pending reminders.</p>
+              <p className="dash-empty-hint">All caught up! No pending notifications.</p>
             )}
           </Card>
 

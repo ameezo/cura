@@ -22,6 +22,7 @@ class MedicationCreate(BaseModel):
 class MedicationResponse(BaseModel):
     id: int
     patient_id: int
+    doctor_id: Optional[int] = None
     name: str
     dosage: str
     form: str

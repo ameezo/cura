@@ -24,6 +24,13 @@
 
 .med-card-instructions { font-size: var(--text-xs); color: var(--color-text-muted); margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--color-border-light); font-style: italic; }
 
+/* Footer */
+.med-card-footer { display: flex; align-items: flex-end; justify-content: space-between; margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--color-border-light); }
+.med-card-footer-info { display: flex; flex-direction: column; gap: 2px; }
+.med-card-doctor { display: flex; align-items: center; gap: var(--space-1); font-size: var(--text-xs); color: var(--color-text-secondary); }
+.med-card-doctor .material-symbols-rounded { font-size: 14px; }
+.med-card-date { font-size: var(--text-xs); color: var(--color-text-light); }
+
 /* Loading & Error */
 .meds-loading { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: var(--space-12) var(--space-4); color: var(--color-text-muted); gap: var(--space-4); }
 .meds-loading-spinner { width: 36px; height: 36px; border: 3px solid var(--color-border-light); border-top-color: var(--color-primary); border-radius: 50%; animation: meds-spin 0.8s linear infinite; }

@@ -15,6 +15,14 @@ def create_medication(data: dict) -> Medication:
 def get_patient_medications(patient_id: int) -> List[Medication]:
     return Medication.query.filter_by(patient_id=patient_id, is_active=True).all()
 
+def get_all_patient_medications(patient_id: int) -> List[Medication]:
+    """Get both active and inactive medications for a patient."""
+    return Medication.query.filter_by(patient_id=patient_id).order_by(Medication.created_at.desc()).all()
+
+def get_doctor_medications(doctor_id: int) -> List[Medication]:
+    """Get all medications prescribed by a doctor."""
+    return Medication.query.filter_by(doctor_id=doctor_id).order_by(Medication.created_at.desc()).all()
+
 def update_medication(med_id: int, data: dict) -> Optional[Medication]:
     med = Medication.query.get(med_id)
     if not med: return None

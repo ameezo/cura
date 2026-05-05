@@ -6,6 +6,7 @@ class Medication(db.Model):
     
     id = db.Column(db.Integer, primary_key=True, index=True)
     patient_id = db.Column(db.Integer, db.ForeignKey("patients.id"), nullable=False)
+    doctor_id = db.Column(db.Integer, db.ForeignKey("doctors.id"), nullable=True)
     
     name = db.Column(db.String(255), nullable=False)
     dosage = db.Column(db.String(100), nullable=False)
@@ -26,3 +27,4 @@ class Medication(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     patient = db.relationship("Patient", backref="medications")
+    doctor = db.relationship("Doctor", backref="prescribed_medications")

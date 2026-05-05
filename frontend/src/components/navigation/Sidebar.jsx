@@ -1,17 +1,32 @@
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import CuraLogo from '../CuraLogo';
 import Avatar from '../ui/Avatar';
 import { SIDEBAR_LINKS, ROLE_LABELS } from '../../utils/routePaths';
 import { useAuth } from '../../hooks/useAuth';
 import { useTheme } from '../../hooks/useTheme';
+import { getUnreadCount } from '../../api/notificationsApi';
 import './Sidebar.css';
 
 export default function Sidebar({ collapsed = false, onToggle }) {
   const location = useLocation();
   const { user, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
+  const [notifCount, setNotifCount] = useState(0);
 
   const roleLabel = ROLE_LABELS[user?.role] || 'User';
+
+  useEffect(() => {
+    const fetchCount = async () => {
+      try {
+        const data = await getUnreadCount();
+        setNotifCount(data.unread_count || 0);
+      } catch { /* silent */ }
+    };
+    fetchCount();
+    const interval = setInterval(fetchCount, 30000);
+    return () => clearInterval(interval);
+  }, [location.pathname]);
 
   return (
     <aside className={`sidebar ${collapsed ? 'sidebar-collapsed' : ''}`} id="app-sidebar">
@@ -40,8 +55,8 @@ export default function Sidebar({ collapsed = false, onToggle }) {
             >
               <span className="material-symbols-rounded sidebar-link-icon">{link.icon}</span>
               {!collapsed && <span className="sidebar-link-label">{link.label}</span>}
-              {!collapsed && link.icon === 'notifications' && (
-                <span className="sidebar-badge">3</span>
+              {!collapsed && link.icon === 'notifications' && notifCount > 0 && (
+                <span className="sidebar-badge">{notifCount > 9 ? '9+' : notifCount}</span>
               )}
             </Link>
           );

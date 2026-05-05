@@ -16,7 +16,17 @@
 /* Actions column */
 .notif-actions { display: flex; flex-direction: column; gap: var(--space-2); align-items: flex-end; flex-shrink: 0; }
 
-/* Dismiss button */
+/* Delete button */
+.notif-delete-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border: none; border-radius: var(--radius-circle);
+  background: transparent; color: var(--color-text-light); cursor: pointer;
+  transition: all var(--transition-fast); opacity: 0.5;
+}
+.notif-delete-btn:hover { opacity: 1; background: var(--color-danger-bg); color: var(--color-danger); }
+.notif-delete-btn .material-symbols-rounded { font-size: 16px; }
+
+/* Legacy dismiss button */
 .notif-dismiss-btn { color: var(--color-danger) !important; font-size: var(--text-xs) !important; opacity: 0.7; transition: opacity 0.2s ease; }
 .notif-dismiss-btn:hover { opacity: 1; }
 

@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, g
 from app.core.security import require_role
 from app.schemas.booking import AvailabilityCreate, AvailabilityResponse, AppointmentCreate, AppointmentResponse
 from app.services import booking_service, patient_service, doctor_service
+from app.services.notification_service import create_notification
 from pydantic import ValidationError
 
 bookings_bp = Blueprint("bookings", __name__)
@@ -149,7 +150,24 @@ def create_appointment():
     appointment = booking_service.create_appointment(appointment_data)
     if not appointment:
         return jsonify({"msg": "This slot is no longer available or double-booked"}), 409
-        
+
+    # Notify the doctor about the new booking
+    try:
+        patient_name = f"{patient_profile.first_name} {patient_profile.last_name}"
+        doctor_profile = doctor_service.get_doctor_by_id(appointment.doctor_id)
+        if doctor_profile:
+            slot = appointment.slot
+            slot_info = f"{slot.date.strftime('%b %d')} at {slot.start_time.strftime('%I:%M %p')}" if slot else ""
+            create_notification(
+                user_id=doctor_profile.user_id,
+                type="appointment",
+                title="New Appointment Booked",
+                message=f"{patient_name} booked an appointment with you for {slot_info}.",
+                related_id=appointment.id
+            )
+    except Exception:
+        pass  # Don't fail the booking if notification fails
+
     return jsonify(_appointment_to_response(appointment)), 201
 
 @bookings_bp.route("/appointments", methods=["GET"])
@@ -183,6 +201,21 @@ def cancel_appointment(appointment_id):
 
     if appointment.status == "cancelled":
         return jsonify({"msg": "This appointment is already cancelled"}), 400
+
+    # Notify the doctor about the cancellation
+    try:
+        patient_name = f"{profile.first_name} {profile.last_name}"
+        doctor_profile = doctor_service.get_doctor_by_id(appointment.doctor_id)
+        if doctor_profile:
+            create_notification(
+                user_id=doctor_profile.user_id,
+                type="appointment",
+                title="Appointment Cancelled",
+                message=f"{patient_name} cancelled their appointment with you.",
+                related_id=appointment.id
+            )
+    except Exception:
+        pass
 
     success = booking_service.cancel_appointment(appointment_id)
     return jsonify({"msg": "Appointment cancelled and slot freed"}), 200
