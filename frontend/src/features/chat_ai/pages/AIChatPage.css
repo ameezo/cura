@@ -290,6 +290,12 @@
 
 .chat-msg-bubble p {
   margin: 0;
+  line-height: var(--leading-relaxed);
+  color: var(--color-text-secondary);
+}
+
+.chat-msg-user .chat-msg-bubble p {
+  color: white;
 }
 
 .chat-msg-bubble ul {

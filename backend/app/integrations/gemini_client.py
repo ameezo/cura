@@ -1,6 +1,6 @@
 """
-Gemini AI Client — Isolated integration layer for Google Gemini API.
-All provider-specific logic lives here so it can be swapped later.
+Gemini AI Client — Isolated integration layer with automatic fallback.
+Providers: 1. Gemini API Studio -> 2. Vertex AI -> 3. Groq
 """
 
 import os
@@ -11,9 +11,19 @@ from typing import List, Dict
 logger = logging.getLogger(__name__)
 
 # ── Configuration ────────────────────────────────────────────────────────────
+AI_CHAT_ENABLED = os.getenv("AI_CHAT_ENABLED", "false").lower() == "true"
+
+# Gemini Config
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
-AI_CHAT_ENABLED = os.getenv("AI_CHAT_ENABLED", "false").lower() == "true"
+
+# Vertex AI Config
+GOOGLE_CLOUD_PROJECT = os.getenv("GOOGLE_CLOUD_PROJECT", "")
+GOOGLE_CLOUD_LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
+
+# Groq Config
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
 
 # ── Medical Safety System Instruction ────────────────────────────────────────
 SYSTEM_INSTRUCTION = """You are a healthcare information assistant inside a medical web app called Cura.
@@ -64,88 +74,139 @@ def _is_emergency(message: str) -> bool:
     return any(re.search(pattern, text) for pattern in EMERGENCY_KEYWORDS)
 
 
-def _build_contents(message_history: List[Dict]) -> list:
-    """
-    Convert our internal message history format into the Gemini SDK
-    contents format.
+# ── Provider Implementations ─────────────────────────────────────────────────
 
-    Each dict in message_history has:
-      - "sender": "user" or "assistant"
-      - "content": str
-    """
+def _call_gemini_api(user_message: str, message_history: List[Dict]) -> str:
+    """Call Google Gemini API via AI Studio (Primary)"""
+    if not GEMINI_API_KEY:
+        raise ValueError("GEMINI_API_KEY is not set")
+
+    from google import genai
+    client = genai.Client(api_key=GEMINI_API_KEY)
+    
     contents = []
     for msg in message_history:
         role = "user" if msg["sender"] == "user" else "model"
-        contents.append({
-            "role": role,
-            "parts": [{"text": msg["content"]}],
-        })
-    return contents
+        contents.append({"role": role, "parts": [{"text": msg["content"]}]})
+        
+    contents.append({"role": "user", "parts": [{"text": user_message}]})
 
+    response = client.models.generate_content(
+        model=GEMINI_MODEL,
+        contents=contents,
+        config={
+            "system_instruction": SYSTEM_INSTRUCTION,
+            "temperature": 0.7,
+            "max_output_tokens": 1024,
+        },
+    )
+    
+    if not response or not response.text:
+        raise ValueError("Empty response from Gemini API")
+        
+    return response.text.strip()
+
+
+def _call_vertex_ai(user_message: str, message_history: List[Dict]) -> str:
+    """Call Google Vertex AI (Secondary)"""
+    if not GOOGLE_CLOUD_PROJECT:
+        raise ValueError("GOOGLE_CLOUD_PROJECT is not set")
+
+    from google import genai
+    client = genai.Client(
+        vertexai=True,
+        project=GOOGLE_CLOUD_PROJECT,
+        location=GOOGLE_CLOUD_LOCATION
+    )
+    
+    contents = []
+    for msg in message_history:
+        role = "user" if msg["sender"] == "user" else "model"
+        contents.append({"role": role, "parts": [{"text": msg["content"]}]})
+        
+    contents.append({"role": "user", "parts": [{"text": user_message}]})
+
+    response = client.models.generate_content(
+        model=GEMINI_MODEL,
+        contents=contents,
+        config={
+            "system_instruction": SYSTEM_INSTRUCTION,
+            "temperature": 0.7,
+            "max_output_tokens": 1024,
+        },
+    )
+    
+    if not response or not response.text:
+        raise ValueError("Empty response from Vertex AI")
+        
+    return response.text.strip()
+
+
+def _call_groq_api(user_message: str, message_history: List[Dict]) -> str:
+    """Call Groq API (Tertiary Fallback)"""
+    if not GROQ_API_KEY:
+        raise ValueError("GROQ_API_KEY is not set")
+        
+    from groq import Groq
+    client = Groq(api_key=GROQ_API_KEY)
+    
+    messages = [{"role": "system", "content": SYSTEM_INSTRUCTION}]
+    
+    for msg in message_history:
+        # OpenAI/Groq format uses "assistant" instead of "model"
+        role = "user" if msg["sender"] == "user" else "assistant"
+        messages.append({"role": role, "content": msg["content"]})
+        
+    messages.append({"role": "user", "content": user_message})
+    
+    response = client.chat.completions.create(
+        messages=messages,
+        model=GROQ_MODEL,
+        temperature=0.7,
+        max_tokens=1024,
+    )
+    
+    if not response or not response.choices or not response.choices[0].message.content:
+        raise ValueError("Empty response from Groq API")
+        
+    return response.choices[0].message.content.strip()
+
+
+# ── Main Entry Point ─────────────────────────────────────────────────────────
 
 def generate_response(user_message: str, message_history: List[Dict] = None) -> str:
     """
-    Generate a response from the Gemini API.
-
-    Args:
-        user_message: The current user message.
-        message_history: Previous messages for context (optional).
-                         Each dict: {"sender": "user"|"assistant", "content": "..."}
-
-    Returns:
-        The assistant's text response.
+    Generate an AI response using a fallback strategy:
+    1. Check for emergency keywords
+    2. Try Gemini API
+    3. Try Vertex AI
+    4. Try Groq
     """
-    # 1. Check if AI chat is enabled
     if not AI_CHAT_ENABLED:
-        return ("AI Chat is currently disabled. Please contact the administrator "
-                "to enable this feature.")
+        return "AI Chat is currently disabled. Please contact the administrator."
 
-    # 2. Check for emergency keywords BEFORE calling the API
+    # 1. Check for emergency keywords BEFORE calling any API
     if _is_emergency(user_message):
         return EMERGENCY_RESPONSE
 
-    # 3. Check API key
-    if not GEMINI_API_KEY:
-        logger.error("GEMINI_API_KEY is not set in environment variables")
-        return ("I'm sorry, the AI service is not configured properly. "
-                "Please contact the administrator.")
+    if message_history is None:
+        message_history = []
 
+    # 2. Try Gemini API Studio (Primary)
     try:
-        # Import here to avoid import errors when the package isn't installed
-        from google import genai
-
-        client = genai.Client(api_key=GEMINI_API_KEY)
-
-        # Build conversation history for context
-        contents = []
-        if message_history:
-            contents = _build_contents(message_history)
-
-        # Add the current user message
-        contents.append({
-            "role": "user",
-            "parts": [{"text": user_message}],
-        })
-
-        # Call the Gemini API with system instruction and conversation history
-        response = client.models.generate_content(
-            model=GEMINI_MODEL,
-            contents=contents,
-            config={
-                "system_instruction": SYSTEM_INSTRUCTION,
-                "temperature": 0.7,
-                "max_output_tokens": 1024,
-            },
-        )
-
-        if response and response.text:
-            return response.text.strip()
-        else:
-            logger.warning("Gemini returned an empty response")
-            return ("I apologize, but I wasn't able to generate a response. "
-                    "Please try rephrasing your question.")
-
+        return _call_gemini_api(user_message, message_history)
     except Exception as e:
-        logger.error(f"Gemini API error: {e}")
-        return ("I'm sorry, I encountered an issue while processing your request. "
-                "Please try again in a moment.")
+        logger.warning(f"Gemini API failed, falling back to Vertex AI: {e}")
+        
+        # 3. Try Vertex AI (Secondary)
+        try:
+            return _call_vertex_ai(user_message, message_history)
+        except Exception as e2:
+            logger.warning(f"Vertex AI failed, falling back to Groq: {e2}")
+            
+            # 4. Try Groq (Tertiary)
+            try:
+                return _call_groq_api(user_message, message_history)
+            except Exception as e3:
+                logger.error(f"All AI providers failed. Final error: {e3}")
+                return "I'm currently experiencing technical difficulties across all systems. Please try again later."
