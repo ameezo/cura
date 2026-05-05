@@ -98,6 +98,7 @@ else
     gcloud sql instances create $DB_INSTANCE \
       --database-version=POSTGRES_16 \
       --tier=db-f1-micro \
+      --edition=ENTERPRISE \
       --region=$REGION \
       --root-password="$DB_PASSWORD" \
       --quiet
