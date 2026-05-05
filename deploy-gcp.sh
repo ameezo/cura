@@ -148,7 +148,9 @@ fi
 if [ -n "$GROQ_KEY" ]; then
     store_secret "groq-api-key" "$GROQ_KEY"
 else
-    warn "GROQ_API_KEY not found — Groq fallback won't work. Add it later with:"
+    warn "GROQ_API_KEY not found — creating placeholder 'empty_key' so deployment doesn't fail."
+    store_secret "groq-api-key" "empty_key"
+    info "You can add your real Groq key later with:"
     echo "    echo -n 'YOUR_KEY' | gcloud secrets versions add groq-api-key --data-file=-"
 fi
 
