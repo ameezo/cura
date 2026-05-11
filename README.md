@@ -1,4 +1,4 @@
-<![CDATA[<div align="center">
+<div align="center">
 
 # 🏥 Cura — Digital Healthcare Companion
 
@@ -677,4 +677,4 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 *Care. Connect. Heal.*
 
 </div>
-]]>
+
